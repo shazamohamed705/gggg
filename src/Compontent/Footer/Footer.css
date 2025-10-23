@@ -1,0 +1,169 @@
+.footer {
+  background-color: #fafafa;
+  color: #333;
+  padding: 60px 0;
+  border-top: 1px solid #ddd;
+}
+
+.footer-container {
+  max-width: 1200px;
+  margin: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 40px;
+  text-align: right;
+}
+
+.footer-title {
+  font-size: 1.6rem;
+  font-weight: bold;
+  margin-bottom: 20px;
+  color: #000;
+}
+
+/* ------------------ 🔷 روابط مهمة ------------------ */
+.footer-links {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  line-height: 2;
+  font-size: 1.1rem;
+}
+
+.footer-links li {
+  position: relative;
+  color: #444;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.footer-links li:hover {
+  color: #0095ff; /* أزرق فاتح */
+  transform: translateX(-6px); /* حركة خفيفة لليسار */
+}
+
+/* ------------------ 🔷 الأيقونات ------------------ */
+.footer-icons {
+  display: flex;
+  justify-content: flex-start;
+  gap: 12px;
+  font-size: 22px;
+  color: #0171BD;
+}
+
+.footer-icon-box {
+  background-color: #fff;
+  border-radius: 10px;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.35s ease;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+/* تأثير hover بلون خاص لكل منصة */
+.footer-icon-box:hover svg {
+  color: #fff;
+}
+
+.footer-icon-box:hover:nth-child(1) { background-color: #25d366; } /* Phone - WhatsApp style */
+.footer-icon-box:hover:nth-child(2) { background-color: #007bff; } /* Email */
+.footer-icon-box:hover:nth-child(3) { background-color: #6c63ff; } /* Website */
+.footer-icon-box:hover:nth-child(4) { background-color: #fffc00; } /* Snapchat */
+.footer-icon-box:hover:nth-child(5) { background-color: #1da1f2; } /* Twitter */
+.footer-icon-box:hover:nth-child(6) { background-color: #010101; } /* TikTok */
+.footer-icon-box:hover:nth-child(7) { background-color: #e1306c; } /* Instagram */
+
+/* ------------------ 🔷 وسائل الدفع ------------------ */
+.payment-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 15px;
+  justify-items: center;
+}
+
+.payment-card {
+  background-color: #fff;
+  border-radius: 14px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.3s ease, transform 0.25s ease, box-shadow 0.3s ease;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.payment-card:hover {
+  border-color: #007bff;
+  transform: translateY(-3px);
+  box-shadow: 0 0 6px rgba(0, 123, 255, 0.25);
+}
+
+.payment-img {
+  width: 50px;
+  height: 50px;
+  object-fit: contain;
+  transition: opacity 0.3s ease;
+}
+
+.payment-card:hover .payment-img {
+  opacity: 0.9;
+}
+
+/* Responsive Design for Mobile */
+@media (max-width: 768px) {
+  .footer {
+    padding: 30px 20px;
+  }
+  
+  .footer-container {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+  }
+  
+  /* Hide important links on mobile */
+  .footer-section:nth-child(2) {
+    display: none;
+  }
+  
+  /* Payment methods appear first */
+  .footer-section:nth-child(3) {
+    order: 1;
+  }
+  
+  /* Contact icons appear second */
+  .footer-section:nth-child(1) {
+    order: 2;
+  }
+  
+  /* Hide titles on mobile */
+  .footer-title {
+    display: none;
+  }
+  
+  .footer-icons {
+    justify-content: center;
+  }
+  
+  .payment-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+  }
+  
+  .payment-card {
+    width: 70px;
+    height: 70px;
+  }
+  
+  .payment-img {
+    width: 40px;
+    height: 40px;
+  }
+}

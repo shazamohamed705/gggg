@@ -1,0 +1,100 @@
+.blogs-page {
+  min-height: 100vh;
+  background: #ffffff;
+  padding: 2rem 1rem;
+  font-family: 'IBM Plex Sans Arabic', 'Segoe UI', sans-serif;
+}
+
+.blogs-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding-right: 0; /* keep original padding to avoid text squeeze */
+  direction: rtl;
+}
+
+.blogs-title {
+  margin: 0 0 1.95rem 0;
+  font-size: 2rem;
+  font-weight: 800;
+  color: #0f172a;
+  text-align: center;
+}
+
+.blogs-error, .blogs-loading {
+  background: #f5f6f8;
+  border: 1px solid #c7d2fe;
+  color: #1e293b;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.blogs-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.25rem;
+  direction: rtl;
+  margin-top: 1.25rem;
+  width: 100%;
+}
+
+/* Grid cards naturally fill columns equally */
+.blog-card { box-sizing: border-box; }
+
+@media (max-width: 992px) {
+  .blogs-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 640px) {
+  .blogs-grid { grid-template-columns: 1fr; }
+}
+
+/* Desktop zoom-out effect and wider spacing */
+@media (min-width: 1280px) {
+  .blogs-container { transform: scale(1.03); transform-origin: right top; padding-right: 1.5rem; }
+  .blogs-grid { gap: 1.5rem; }
+}
+
+/* already handled above */
+
+.blog-card { position: relative; background: #fff; border: 1px solid rgba(2,6,23,.08); border-radius: 16px; overflow: hidden; box-shadow: 0 10px 22px rgba(15,23,42,.07); transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease; display: flex; flex-direction: column; }
+.blog-card:hover { transform: translateY(-4px); box-shadow: 0 16px 30px rgba(15,23,42,.12); border-color: rgba(1,113,189,.25); }
+
+.blog-card-head { position: relative; }
+.blog-image-wrapper { aspect-ratio: 16/9; background: #eef2ff; overflow: hidden; }
+.blog-image { width: 100%; height: 100%; object-fit: cover; display: block; transform: scale(1); transition: transform .5s ease; }
+.blog-card:hover .blog-image { transform: scale(1.06); }
+.blog-image-overlay { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(2,6,23,0) 40%, rgba(2,6,23,0.35) 100%); pointer-events: none; }
+.blog-badge { position: absolute; top: 10px; right: 10px; background: #0171BD; color: #fff; font-size: .75rem; padding: .25rem .5rem; border-radius: 999px; }
+
+.blog-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.1);
+}
+
+.blog-content { padding: 0.95rem 1.2rem 0.85rem; text-align: right; }
+.blog-card-title { margin: 0 0 .2rem 0; font-size: 1.22rem; font-weight: 900; color: #0b1220; letter-spacing: -.015em; }
+.blog-card-desc { margin: 0; color: #475569; font-size: .92rem; line-height: 1.6; }
+
+.blog-card-footer { margin-top: .8rem; display: flex; align-items: center; justify-content: space-between; color: #64748b; font-size: .85rem; }
+.blog-readmore { color: #0171BD; text-decoration: none; font-weight: 800; display: inline-flex; align-items: center; gap: 6px; }
+.blog-readmore .arrow { transition: transform .2s ease; }
+.blog-readmore:hover .arrow { transform: translateX(2px); }
+.blog-readmore.disabled { opacity: .5; pointer-events: none; }
+
+/* Floating CTA button appears over card on hover */
+.blog-cta { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -40%); background: #0171BD; color: #fff; padding: .6rem 1rem; border-radius: 999px; font-weight: 800; font-size: .95rem; text-decoration: none; opacity: 0; pointer-events: none; box-shadow: 0 8px 18px rgba(1,113,189,.35); transition: opacity .25s ease, transform .25s ease; }
+.blog-card:hover .blog-cta { opacity: 1; transform: translate(-50%, -50%); pointer-events: auto; }
+
+@media (max-width: 992px) {
+  .blogs-grid { grid-template-columns: 1fr; }
+}
+
+/* line clamp helpers */
+.line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.line-clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+/* single line clamp */
+.line-clamp-1 { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+
+
