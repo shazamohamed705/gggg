@@ -1268,56 +1268,58 @@ const Home = () => {
             طبية متكاملة ...
           </p>
 
-          {/* Social Media Icons */}
-          <div className="home-complex-social">
-            {SOCIAL_MEDIA?.instagram && (
-              <a
-                href={SOCIAL_MEDIA.instagram}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="home-complex-social-icon"
-                aria-label="Instagram"
-              >
-                <FaInstagram className="text-2xl" />
-              </a>
-            )}
+          {/* Social Media Icons - Only show if there are social media links */}
+          {(SOCIAL_MEDIA?.instagram || SOCIAL_MEDIA?.snapchat || SOCIAL_MEDIA?.twitter || SOCIAL_MEDIA?.tiktok) && (
+            <div className="home-complex-social">
+              {SOCIAL_MEDIA?.instagram && (
+                <a
+                  href={SOCIAL_MEDIA.instagram}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="home-complex-social-icon"
+                  aria-label="Instagram"
+                >
+                  <FaInstagram className="text-2xl" />
+                </a>
+              )}
 
-            {SOCIAL_MEDIA?.snapchat && (
-              <a
-                href={SOCIAL_MEDIA.snapchat}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="home-complex-social-icon"
-                aria-label="Snapchat"
-              >
-                <FaSnapchatGhost className="text-2xl" />
-              </a>
-            )}
+              {SOCIAL_MEDIA?.snapchat && (
+                <a
+                  href={SOCIAL_MEDIA.snapchat}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="home-complex-social-icon"
+                  aria-label="Snapchat"
+                >
+                  <FaSnapchatGhost className="text-2xl" />
+                </a>
+              )}
 
-            {SOCIAL_MEDIA?.twitter && (
-              <a
-                href={SOCIAL_MEDIA.twitter}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="home-complex-social-icon"
-                aria-label="Twitter"
-              >
-                <FaTwitter className="text-2xl" />
-              </a>
-            )}
+              {SOCIAL_MEDIA?.twitter && (
+                <a
+                  href={SOCIAL_MEDIA.twitter}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="home-complex-social-icon"
+                  aria-label="Twitter"
+                >
+                  <FaTwitter className="text-2xl" />
+                </a>
+              )}
 
-            {SOCIAL_MEDIA?.tiktok && (
-              <a
-                href={SOCIAL_MEDIA.tiktok}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="home-complex-social-icon"
-                aria-label="TikTok"
-              >
-                <FaTiktok className="text-2xl" />
-              </a>
-            )}
-          </div>
+              {SOCIAL_MEDIA?.tiktok && (
+                <a
+                  href={SOCIAL_MEDIA.tiktok}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="home-complex-social-icon"
+                  aria-label="TikTok"
+                >
+                  <FaTiktok className="text-2xl" />
+                </a>
+              )}
+            </div>
+          )}
         </div>
       </section>
 
@@ -1634,180 +1636,87 @@ const Home = () => {
 
       {/* Location and Contact Section */}
       <section
-        className="relative bg-white z-10 location-section"
-        style={{
-          marginTop: "0px",
-          paddingTop: "80px",
-          paddingBottom: "80px",
-          minHeight: "60vh",
-        }}
+        className="home-location-section"
         dir="rtl"
       >
-        <div
-          className="w-full overflow-visible flex justify-center items-center"
-          style={{ paddingTop: "0px" }}
-        >
+        <div className="home-location-outer">
           {/* Background Container */}
-          <div className="w-11/12 md:w-[98%] max-w-[1200px] bg-[#F9F9F9] rounded-lg p-4 md:px-12 md:py-10 relative mb-8 md:mb-10">
+          <div className="home-location-bg">
             {/* Section Title */}
-            <h2
-              className="cursor-pointer transition-all duration-300 hover:scale-105 hover:translate-x-2 text-lg md:text-2xl lg:text-[34px] font-extrabold text-right mb-3 md:mb-8 whitespace-nowrap"
-              style={{
-                color: "#0874BE",
-                fontFamily: "'IBM Plex Sans Arabic', sans-serif",
-                textShadow: "2px 2px 4px rgba(0, 0, 0, 0.1)",
-              }}
-            >
+            <h2 className="home-location-title">
               موقعنا على الخريطة
             </h2>
 
             {/* Map and Contact Info */}
-            <div className="grid grid-cols-2 gap-3 md:gap-8">
+            <div className="home-location-grid">
               {/* Contact Information - Left side */}
               <div className="">
                 {/* Address */}
-                <div
-                  className="flex items-start gap-2 md:gap-4 contact-item"
-                  style={{ marginBottom: "20px" }}
-                >
-                  <div
-                    className="flex-shrink-0 w-6 h-6 md:w-8 md:h-8 rounded-full flex items-center justify-center"
-                    style={{ backgroundColor: "rgb(225, 236, 244)" }}
-                  >
-                    <FaMapMarkerAlt
-                      className="text-xs md:text-sm"
-                      style={{ color: "rgb(1, 113, 189)" }}
-                    />
+                <div className="home-contact-item">
+                  <div className="home-contact-icon">
+                    <FaMapMarkerAlt />
                   </div>
                   <div>
-                    <h3
-                      className="text-sm md:text-lg font-semibold mb-1 md:mb-3"
-                      style={{
-                        fontFamily: "'IBM Plex Sans Arabic', sans-serif",
-                        color: "#0874BE",
-                      }}
-                    >
+                    <h3 className="home-contact-title">
                       العنوان
                     </h3>
-                    <p
-                      className="text-xs md:text-base text-gray-600 leading-relaxed md:leading-loose"
-                      style={{
-                        fontFamily: "'IBM Plex Sans Arabic', sans-serif",
-                      }}
-                    >
+                    <p className="home-contact-text">
                       {CONTACT_DATA?.address || "الرياض، المملكة العربية السعودية - شارع الملك فهد، حي الملز"}
                     </p>
                   </div>
                 </div>
 
                 {/* Phone */}
-                <div
-                  className="flex items-start gap-2 md:gap-4 contact-item"
-                  style={{ marginBottom: "20px" }}
-                >
-                  <div
-                    className="flex-shrink-0 w-6 h-6 md:w-8 md:h-8 rounded-full flex items-center justify-center"
-                    style={{ backgroundColor: "rgb(225, 236, 244)" }}
-                  >
-                    <FaPhone
-                      className="text-xs md:text-sm"
-                      style={{ color: "rgb(1, 113, 189)" }}
-                    />
+                <div className="home-contact-item">
+                  <div className="home-contact-icon">
+                    <FaPhone />
                   </div>
                   <div>
-                    <h3
-                      className="text-sm md:text-lg font-semibold mb-1 md:mb-3"
-                      style={{
-                        fontFamily: "'IBM Plex Sans Arabic', sans-serif",
-                        color: "#0874BE",
-                      }}
-                    >
+                    <h3 className="home-contact-title">
                       الهاتف
                     </h3>
-                    <p
-                      className="text-xs md:text-base text-gray-600 leading-relaxed md:leading-loose"
-                      style={{
-                        fontFamily: "'IBM Plex Sans Arabic', sans-serif",
-                      }}
-                    >
+                    <p className="home-contact-text">
                       {CONTACT_DATA?.phone || "+966 11 123 4567"}
                     </p>
                   </div>
                 </div>
 
                 {/* Email */}
-                <div
-                  className="flex items-start gap-2 md:gap-4 contact-item"
-                  style={{ marginBottom: "20px" }}
-                >
-                  <div
-                    className="flex-shrink-0 w-6 h-6 md:w-8 md:h-8 rounded-full flex items-center justify-center"
-                    style={{ backgroundColor: "rgb(225, 236, 244)" }}
-                  >
-                    <FaEnvelope
-                      className="text-xs md:text-sm"
-                      style={{ color: "rgb(1, 113, 189)" }}
-                    />
+                <div className="home-contact-item">
+                  <div className="home-contact-icon">
+                    <FaEnvelope />
                   </div>
                   <div>
-                    <h3
-                      className="text-sm md:text-lg font-semibold mb-1 md:mb-3"
-                      style={{
-                        fontFamily: "'IBM Plex Sans Arabic', sans-serif",
-                        color: "#0874BE",
-                      }}
-                    >
+                    <h3 className="home-contact-title">
                       البريد الإلكتروني
                     </h3>
-                    <p
-                      className="text-xs md:text-base text-gray-600 leading-relaxed md:leading-loose break-all"
-                      style={{
-                        fontFamily: "'IBM Plex Sans Arabic', sans-serif",
-                      }}
-                    >
+                    <p className="home-contact-text">
                       {CONTACT_DATA?.email || "info@ghaym-medical.com"}
                     </p>
                   </div>
                 </div>
 
                 {/* Working Hours */}
-                <div
-                  className="flex items-start gap-2 md:gap-4 contact-item"
-                  style={{ marginBottom: "0px" }}
-                >
-                  <div
-                    className="flex-shrink-0 w-6 h-6 md:w-8 md:h-8 rounded-full flex items-center justify-center"
-                    style={{ backgroundColor: "rgb(225, 236, 244)" }}
-                  >
-                    <FaClock
-                      className="text-xs md:text-sm"
-                      style={{ color: "rgb(1, 113, 189)" }}
-                    />
+                <div className="home-contact-item" style={{ marginBottom: "0px" }}>
+                  <div className="home-contact-icon">
+                    <FaClock />
                   </div>
                   <div>
-                    <h3
-                      className="text-sm md:text-lg font-semibold mb-1 md:mb-3"
-                      style={{
-                        fontFamily: "'IBM Plex Sans Arabic', sans-serif",
-                        color: "#0874BE",
-                      }}
-                    >
+                    <h3 className="home-contact-title">
                       ساعات العمل
                     </h3>
-                    {formatWorkingHours(CONTACT_DATA?.working_times)}
+                    <div className="home-contact-hours">
+                      {formatWorkingHours(CONTACT_DATA?.working_times)}
+                    </div>
                   </div>
                 </div>
               </div>
 
               {/* Google Map - Right side */}
-              <div
-                className="bg-white shadow-xl overflow-hidden"
-                style={{ borderRadius: "15px" }}
-              >
+              <div className="home-map-container">
                 <iframe
                   src={CONTACT_DATA?.google_maps_link || "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3624.4!2d46.6753!3d24.7136!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3e2ee2c4b8c8c8c9%3A0x3e2ee2c4b8c8c8c9!2sKing%20Fahd%20Rd%2C%20Al%20Malaz%2C%20Riyadh%2012621%2C%20Saudi%20Arabia!5e0!3m2!1sen!2s!4v1704067200000!5m2!1sen!2s"}
-                  className="w-full h-80 md:h-96 lg:h-[450px]"
-                  style={{ border: 0 }}
+                  className="home-map-iframe"
                   allowFullScreen=""
                   loading="lazy"
                   referrerPolicy="no-referrer-when-downgrade"

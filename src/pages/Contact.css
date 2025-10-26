@@ -11,6 +11,14 @@
   justify-content: center;
 }
 
+/* Desktop version - reduce spacing more */
+@media (min-width: 768px) {
+  .contact-page {
+    padding: 0 !important;
+    margin-top: -2rem !important;
+  }
+}
+
 /* Form Fields Grid */
 .contact-form-fields {
   display: grid;
@@ -35,11 +43,26 @@
   padding: 0 1rem;
 }
 
+/* Desktop version - reduce spacing more */
+@media (min-width: 768px) {
+  .contact-container {
+    padding: 1.5rem !important;
+  }
+}
+
 /* Page Header */
 .contact-page-header {
   text-align: right;
   margin-bottom: 2rem;
   margin-right: 3rem;
+}
+
+/* Desktop version - reduce spacing more */
+@media (min-width: 768px) {
+  .contact-page-header {
+    margin-bottom: 0.5rem !important;
+    margin-right: 1.5rem !important;
+  }
 }
 
 .contact-page-title {
@@ -67,6 +90,13 @@
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
   padding: 2rem;
   transition: all 0.3s ease;
+}
+
+/* Desktop version - reduce spacing more */
+@media (min-width: 768px) {
+  .contact-form-panel {
+    padding: 1rem !important;
+  }
 }
 
 .contact-form-panel:hover {

@@ -7,7 +7,15 @@
   height: 100vh;
   overflow: hidden;
   margin-top: -4rem;
-  padding-top: 4rem;
+  padding-top: 1rem;
+}
+
+/* Desktop version - reduce spacing */
+@media (min-width: 768px) {
+  .home-banner {
+    margin-top: -5rem;
+    padding-top: 0;
+  }
 }
 
 /* Mobile version */
@@ -358,6 +366,15 @@
   align-items: center;
 }
 
+/* Desktop version - reduce spacing more */
+@media (min-width: 768px) {
+  .home-complex-section {
+    top: -60px;
+    padding-top: 20px;
+    padding-bottom: 40px;
+  }
+}
+
 .home-complex-container {
   width: 100%;
   text-align: center;
@@ -445,6 +462,15 @@
   display: flex;
   justify-content: center;
   align-items: center;
+}
+
+/* Desktop version - reduce spacing more */
+@media (min-width: 768px) {
+  .home-clinics-section {
+    top: -60px;
+    padding-top: 15px;
+    padding-bottom: 15px;
+  }
 }
 
 /* Small screens */
@@ -855,6 +881,13 @@
   padding-top: 0;
   padding-bottom: 0;
   min-height: 70vh;
+}
+
+/* Desktop version - reduce spacing more */
+@media (min-width: 768px) {
+  .home-services-section {
+    margin-top: -100px;
+  }
 }
 
 @media (min-width: 768px) {
@@ -1712,16 +1745,20 @@
 /* Location and Contact Section */
 .home-location-section {
   position: relative;
-  background-color: white;
+  background-color: #F9F9F9; /* خلفية رصاصية تغطي عرض الصفحة بالكامل */
   z-index: 10;
   margin-top: 0;
-  padding-top: 80px;
-  padding-bottom: 80px;
-  min-height: 60vh;
+  padding-top: 40px; /* تقليل من 80px إلى 40px */
+  padding-bottom: 40px; /* تقليل من 80px إلى 40px */
+  min-height: 40vh; /* تقليل من 60vh إلى 40vh */
+  width: 100vw; /* عرض كامل للصفحة */
+  margin-left: calc(-50vw + 50%); /* توسيع للوصول لحواف الصفحة */
 }
 
 .home-location-outer {
   width: 100%;
+  max-width: 1600px; /* تحديد عرض المحتوى */
+  margin: 0 auto; /* توسيط المحتوى */
   overflow: visible;
   display: flex;
   justify-content: center;
@@ -1730,22 +1767,21 @@
 }
 
 .home-location-bg {
-  width: 98%;
-  max-width: 1600px;
-  background-color: #F9F9F9;
+  width: 100%;
+  background-color: transparent; /* إزالة الخلفية من الحاوية الداخلية */
   border-radius: 8px;
-  padding: 40px 60px;
+  padding: 20px 60px; /* زيادة المسافة الجانبية من 40px إلى 60px */
   position: relative;
-  margin-bottom: 40px;
+  margin-bottom: 20px; /* تقليل من 40px إلى 20px */
 }
 
 .home-location-title {
   color: #0874BE;
   font-weight: 800;
-  font-size: 28px;
+  font-size: 24px; /* تقليل من 28px إلى 24px */
   font-family: 'IBM Plex Sans Arabic', sans-serif;
   text-align: right;
-  margin-bottom: 30px;
+  margin-bottom: 15px; /* تقليل المسافة من 20px إلى 15px */
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
   cursor: pointer;
   transition: all 300ms;
@@ -1758,12 +1794,36 @@
 .home-location-grid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 2rem;
+  gap: 1.5rem; /* تقليل من 2rem إلى 1.5rem */
+  width: 100%;
 }
 
 @media (min-width: 1024px) {
   .home-location-grid {
     grid-template-columns: repeat(2, 1fr);
+    gap: 3rem;
+  }
+}
+
+/* تحسينات للشاشات الصغيرة */
+@media (max-width: 767px) {
+  .home-location-section {
+    padding-top: 30px; /* تقليل من 60px إلى 30px */
+    padding-bottom: 30px; /* تقليل من 60px إلى 30px */
+  }
+  
+  .home-location-bg {
+    padding: 15px 30px; /* زيادة المسافة الجانبية من 15px إلى 30px */
+    margin-bottom: 15px; /* تقليل من 30px إلى 15px */
+  }
+  
+  .home-location-title {
+    font-size: 20px; /* تقليل حجم العنوان في الشاشات الصغيرة */
+    margin-bottom: 10px; /* تقليل المسافة أكثر في الشاشات الصغيرة */
+  }
+  
+  .home-contact-item {
+    margin-bottom: 12px; /* تقليل المسافة بين عناصر الاتصال */
   }
 }
 
@@ -1771,7 +1831,7 @@
   display: flex;
   align-items: start;
   gap: 1rem;
-  margin-bottom: 32px;
+  margin-bottom: 20px; /* تقليل المسافة من 32px إلى 20px */
 }
 
 .home-contact-item:last-child {
@@ -1822,10 +1882,27 @@
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
   overflow: hidden;
   border-radius: 30px;
+  width: 100%;
+  height: 320px; /* ارتفاع ثابت للخريطة */
 }
 
 .home-map-iframe {
   border: 0;
+  width: 100%;
+  height: 100%; /* ملء الحاوية بالكامل */
+}
+
+/* تحسينات للشاشات المختلفة */
+@media (min-width: 768px) {
+  .home-map-container {
+    height: 400px; /* إرجاع إلى الحجم الأصلي */
+  }
+}
+
+@media (min-width: 1024px) {
+  .home-map-container {
+    height: 450px; /* إرجاع إلى الحجم الأصلي */
+  }
 }
 
 

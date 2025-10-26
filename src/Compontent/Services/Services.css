@@ -10,6 +10,14 @@
   font-family: 'IBM Plex Sans Arabic', sans-serif;
 }
 
+/* Desktop version - reduce spacing more */
+@media (min-width: 768px) {
+  .gym-services-page .gym-services-main-container {
+    padding: 0 !important;
+    margin-top: -4rem;
+  }
+}
+
 .gym-services-page .gym-services-top-header {
   display: flex;
   justify-content: space-between;
@@ -19,6 +27,14 @@
   max-width: 1600px;
   margin-left: auto;
   margin-right: auto;
+}
+
+/* Desktop version - reduce spacing more */
+@media (min-width: 768px) {
+  .gym-services-page .gym-services-top-header {
+    margin-bottom: 5px;
+    padding-top: 0.5rem;
+  }
 }
 
 .gym-services-page .gym-services-count-display {
@@ -621,6 +637,14 @@
   padding: 8px 10px;
   z-index: 1000;
   border-bottom: 1px solid #eee;
+}
+
+/* Desktop version - reduce spacing more */
+@media (min-width: 768px) {
+  .gym-services-page .gym-services-filter-bar {
+    padding: 2px 10px;
+    margin-bottom: 5px;
+  }
 }
 
 /* ======== تسريع استجابة الضغط على الأزرار ======== */

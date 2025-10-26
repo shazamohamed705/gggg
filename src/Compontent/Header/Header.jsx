@@ -8,6 +8,7 @@ const Header = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [categories, setCategories] = useState([]);
   const [showCategoriesInNavbar, setShowCategoriesInNavbar] = useState(false);
+  const [isLoadingCategories, setIsLoadingCategories] = useState(true);
   const navigate = useNavigate();
 
   // Toggle menu - memoized with useCallback
@@ -42,9 +43,29 @@ const Header = () => {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
+        setIsLoadingCategories(true);
+        
+        // إضافة timeout للاستجابة
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2000); // 2 ثانية timeout
+        
         const response = await fetch(
-          "https://ghaimcenter.com/laravel/api/clinics/services-in-categories"
+          "https://ghaimcenter.com/laravel/api/clinics/services-in-categories",
+          {
+            signal: controller.signal,
+            headers: {
+              'Cache-Control': 'no-cache',
+              'Pragma': 'no-cache'
+            }
+          }
         );
+        
+        clearTimeout(timeoutId);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         const result = await response.json();
         
         if (result.status === "success" && result.data) {
@@ -99,6 +120,9 @@ const Header = () => {
       } catch (error) {
         console.error("Error fetching categories:", error);
         setShowCategoriesInNavbar(false);
+        setCategories([]);
+      } finally {
+        setIsLoadingCategories(false);
       }
     };
 
@@ -171,7 +195,7 @@ const Header = () => {
   return (
     <>
       <header className={headerClassName}> 
-        <div className="ghym-main-header-container w-full px-8 py-8 pb-14 md:py-10 md:pb-20" style={{ paddingTop: '40px' }}>
+        <div className="ghym-main-header-container w-full px-6 py-4 pb-8 md:py-3 md:pb-8" style={{ paddingTop: '20px' }}>
           {/* Mobile Hamburger - Left Side */}
           <button
             onClick={toggleMenu}
@@ -184,10 +208,10 @@ const Header = () => {
           </button>
         
         {/* Navigation Links with Logo and Login Buttons - All in same line */}
-        <nav className="ghym-main-navigation arabic" style={{ paddingRight: '20px', paddingBottom: '24px' }}>
-          <div className="ghym-main-nav-container flex justify-between items-center gap-6">
+        <nav className="ghym-main-navigation arabic" style={{ paddingRight: '15px', paddingBottom: '8px' }}>
+          <div className="ghym-main-nav-container flex justify-between items-center gap-4">
             {/* Logo and Navigation Links - Left side */}
-            <div className="flex items-center gap-6" style={{ marginLeft: '100px' }}>
+            <div className="flex items-center gap-4" style={{ marginLeft: '80px' }}>
               {/* Logo beside navigation links */}
               <Link to="/" className="ghym-main-logo-link flex items-center">
                 <img 
@@ -201,14 +225,14 @@ const Header = () => {
               
               {/* Navigation Links */}
               <Link to="/" className="ghym-main-nav-item">الصفحة الرئيسية</Link>
-              <Link to="/services" className="ghym-main-nav-item">جميع الخدمات</Link>
-              <Link to="/book" className="ghym-main-nav-item">حجز موعد</Link>
-              <Link to="/about" className="ghym-main-nav-item">من نحن</Link>
-              <Link to="/blogs" className="ghym-main-nav-item">المدونة</Link>
-              <Link to="/contact" className="ghym-main-nav-item">تواصل معنا</Link>
               
-              {/* Categories - Only show if enabled and available - Moved to end */}
-              {showCategoriesInNavbar && categories.length > 0 && categories.map((category) => (
+              {/* Categories - Only show if enabled and available - Right after home page */}
+              {isLoadingCategories && (
+                <span className="ghym-main-nav-item" style={{ color: '#999', fontSize: '14px' }}>
+                  جاري التحميل...
+                </span>
+              )}
+              {!isLoadingCategories && showCategoriesInNavbar && categories.length > 0 && categories.map((category) => (
                 <button
                   key={category.id}
                   onClick={() => handleCategoryClick(category.id)}
@@ -235,11 +259,17 @@ const Header = () => {
                   {category.name}
                 </button>
               ))}
+              
+              <Link to="/services" className="ghym-main-nav-item">جميع الخدمات</Link>
+              <Link to="/book" className="ghym-main-nav-item">حجز موعد</Link>
+              <Link to="/about" className="ghym-main-nav-item">من نحن</Link>
+              <Link to="/blogs" className="ghym-main-nav-item">المدونة</Link>
+              <Link to="/contact" className="ghym-main-nav-item">تواصل معنا</Link>
             </div>
             
             {/* Login/Dashboard Buttons - Right side */}
             {isLoggedIn ? (
-              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginLeft: '50px' }}>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginLeft: '30px' }}>
                 <Link 
                   to="/dashboard" 
                   className="arabic ghym-main-login-button"
@@ -318,7 +348,7 @@ const Header = () => {
                   boxShadow: 'none',
                   display: 'inline-block',
                   cursor: 'pointer',
-                  marginLeft: '60px'
+                  marginLeft: '30px'
                 }}
               >
                 تسجيل دخول

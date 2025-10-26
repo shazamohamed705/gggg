@@ -96,6 +96,17 @@ body {
   z-index: 100;
 }
 
+/* Reduce spacing between header and main content on desktop */
+@media (min-width: 768px) {
+  .ghym-main-page-wrapper {
+    margin-top: -3rem;
+  }
+  
+  .ghym-main-page-wrapper > *:not(.ghym-main-header-wrapper) {
+    margin-top: 3rem;
+  }
+}
+
 /* Main Logo styles - professional size */
 .ghym-main-logo-img {
   width: 80px;
