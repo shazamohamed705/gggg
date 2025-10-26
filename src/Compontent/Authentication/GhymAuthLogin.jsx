@@ -49,8 +49,7 @@ const GhymAuthLogin = () => {
         // Show success popup then navigate
         setShowSuccess(true);
         setTimeout(() => {
-          navigate('/dashboard');
-          window.location.reload();
+          navigate('/dashboard', { replace: true });
         }, 1500);
       } else {
         // API returned error
@@ -147,7 +146,11 @@ const GhymAuthLogin = () => {
           <div className="ghym-auth-success-modal">
             <div className="ghym-auth-success-title">تم تسجيل الدخول بنجاح</div>
             <div className="ghym-auth-success-text">يتم تحويلك إلى لوحة التحكم...</div>
-            <button className="ghym-auth-success-btn" onClick={() => { setShowSuccess(false); navigate('/dashboard'); window.location.reload(); }}>حسناً</button>
+            <button className="ghym-auth-success-btn" onClick={() => { 
+              setShowSuccess(false); 
+              // Use replace to avoid back button issues
+              navigate('/dashboard', { replace: true }); 
+            }}>حسناً</button>
           </div>
         </div>
       )}

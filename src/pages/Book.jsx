@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import bannerImage from "../assets/photo/baner1.webp";
 import banner2Image from "../assets/photo/bamer 2.webp";
@@ -25,6 +25,18 @@ import "./Book.css";
 
 const ITEMS_PER_PAGE = 6;
 
+// Helper function to safely extract data from API response
+const extractDataFromResponse = (responseData) => {
+  if (!responseData || typeof responseData !== 'object') return [];
+  
+  // Handle different response structures
+  if (Array.isArray(responseData)) return responseData;
+  if (Array.isArray(responseData.data)) return responseData.data;
+  if (Array.isArray(responseData.data?.data)) return responseData.data.data;
+  
+  return [];
+};
+
 const Book = () => {
   const navigate = useNavigate();
   const [currentImage, setCurrentImage] = useState(0);
@@ -41,6 +53,7 @@ const Book = () => {
   const [selectedPriceRange, setSelectedPriceRange] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
   const [searchName, setSearchName] = useState("");
+  const [debouncedSearchName, setDebouncedSearchName] = useState("");
   const [doctors, setDoctors] = useState([]);
   const [allDoctors, setAllDoctors] = useState([]);
   const [isFiltering, setIsFiltering] = useState(false);
@@ -90,35 +103,78 @@ const Book = () => {
       try {
         setLoading(true);
 
-        // Fetch all data in parallel for better performance
+        // Fetch all data in parallel for better performance with timeout
+        const fetchWithTimeout = (url, timeout = 10000) => {
+          return Promise.race([
+            fetch(url),
+            new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Request timeout')), timeout)
+            )
+          ]);
+        };
+
         const [clinicsResponse, categoriesResponse, doctorsResponse] =
-          await Promise.all([
-            fetch("https://ghaimcenter.com/laravel/api/clinics"),
-            fetch("https://ghaimcenter.com/laravel/api/clinics/categories"),
-            fetch("https://ghaimcenter.com/laravel/api/clinics/doctors"),
+          await Promise.allSettled([
+            fetchWithTimeout("https://ghaimcenter.com/laravel/api/clinics"),
+            fetchWithTimeout("https://ghaimcenter.com/laravel/api/clinics/categories"),
+            fetchWithTimeout("https://ghaimcenter.com/laravel/api/clinics/doctors"),
           ]);
 
-        const [clinicsData, categoriesData, doctorsData] = await Promise.all([
-          clinicsResponse.json(),
-          categoriesResponse.json(),
-          doctorsResponse.json(),
-        ]);
-
-        if (clinicsData.status === "success") {
-          setClinics(clinicsData.data);
+        // Process clinics data
+        if (clinicsResponse.status === 'fulfilled' && clinicsResponse.value.ok) {
+          const clinicsData = await clinicsResponse.value.json();
+          if (clinicsData.status === "success") {
+            const clinicsArray = extractDataFromResponse(clinicsData);
+            setClinics(clinicsArray);
+            console.log(`Loaded ${clinicsArray.length} clinics`);
+          } else {
+            console.warn("Invalid clinics response status:", clinicsData);
+            setClinics([]);
+          }
+        } else {
+          console.warn("Failed to fetch clinics:", clinicsResponse.reason);
+          setClinics([]);
         }
 
-        if (categoriesData.status === "success") {
-          setCategories(categoriesData.data);
+        // Process categories data
+        if (categoriesResponse.status === 'fulfilled' && categoriesResponse.value.ok) {
+          const categoriesData = await categoriesResponse.value.json();
+          if (categoriesData.status === "success") {
+            const categoriesArray = extractDataFromResponse(categoriesData);
+            setCategories(categoriesArray);
+            console.log(`Loaded ${categoriesArray.length} categories`);
+          } else {
+            console.warn("Invalid categories response status:", categoriesData);
+            setCategories([]);
+          }
+        } else {
+          console.warn("Failed to fetch categories:", categoriesResponse.reason);
+          setCategories([]);
         }
 
-        if (doctorsData.status === "success") {
-          setDoctorNames(doctorsData.data);
+        // Process doctor names data
+        if (doctorsResponse.status === 'fulfilled' && doctorsResponse.value.ok) {
+          const doctorsData = await doctorsResponse.value.json();
+          if (doctorsData.status === "success") {
+            const doctorsArray = extractDataFromResponse(doctorsData);
+            setDoctorNames(doctorsArray);
+            console.log(`Loaded ${doctorsArray.length} doctor names`);
+          } else {
+            console.warn("Invalid doctor names response status:", doctorsData);
+            setDoctorNames([]);
+          }
+        } else {
+          console.warn("Failed to fetch doctor names:", doctorsResponse.reason);
+          setDoctorNames([]);
         }
 
         setLoading(false);
       } catch (error) {
         console.error("Error fetching data:", error);
+        // Set fallback empty arrays to prevent crashes
+        setClinics([]);
+        setCategories([]);
+        setDoctorNames([]);
         setLoading(false);
       }
     };
@@ -126,15 +182,28 @@ const Book = () => {
     fetchData();
   }, []);
 
+  // Debounce search input for better performance
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchName(searchName);
+    }, 300); // 300ms delay
+
+    return () => clearTimeout(timer);
+  }, [searchName]);
+
   // Use clinics as doctors directly
   useEffect(() => {
-    if (clinics.length > 0) {
+    if (Array.isArray(clinics) && clinics.length > 0) {
       // Transform clinics into doctors format
       const doctorsList = clinics
         .filter((clinic) => {
+          // Validate clinic data structure
+          if (!clinic || typeof clinic !== 'object') return false;
+          
           // Only include clinics whose owner_name is in the approved doctors list
           return (
-            doctorNames.length === 0 || doctorNames.includes(clinic.owner_name)
+            doctorNames.length === 0 || 
+            (Array.isArray(doctorNames) && doctorNames.includes(clinic.owner_name))
           );
         })
         .map((clinic) => {
@@ -142,9 +211,9 @@ const Book = () => {
           let minPrice = 0;
           let maxPrice = 0;
 
-          if (clinic.services && clinic.services.length > 0) {
+          if (clinic.services && Array.isArray(clinic.services) && clinic.services.length > 0) {
             const prices = clinic.services
-              .map((service) => service.price)
+              .map((service) => service?.price || 0)
               .filter((price) => price > 0);
 
             if (prices.length > 0) {
@@ -154,26 +223,30 @@ const Book = () => {
           }
 
           return {
-            id: clinic.id,
-            name: clinic.owner_name, // Doctor name from owner_name
-            photo: clinic.owner_photo,
-            rating: clinic.rating || 0,
-            clinic_id: clinic.id,
-            clinic_name: clinic.clinic_name,
-            clinic_address: clinic.clinic_address,
-            clinic_categories: clinic.clinic_categories, // Specialty from categories
-            top_rated: clinic.top_rated,
-            phone: clinic.clinic_phone,
-            gender: clinic.gender_served,
+            id: clinic.id || 0,
+            name: clinic.owner_name || "غير محدد", // Doctor name from owner_name
+            photo: clinic.owner_photo || "/imge.png",
+            rating: clinic.rating || clinic.reviews_avg_rating || 0,
+            clinic_id: clinic.id || 0,
+            clinic_name: clinic.clinic_name || "غير محدد",
+            clinic_address: clinic.clinic_address || "غير محدد",
+            clinic_categories: clinic.clinic_categories || "", // Specialty from categories
+            top_rated: clinic.top_rated || 0,
+            phone: clinic.clinic_phone || "",
+            gender: clinic.gender_served || 0,
             min_price: minPrice,
             max_price: maxPrice,
-            created_at: clinic.created_at,
-            updated_at: clinic.updated_at
+            created_at: clinic.created_at || "",
+            updated_at: clinic.updated_at || ""
           };
         });
 
       setAllDoctors(doctorsList);
       setDoctors(doctorsList);
+    } else {
+      // Reset doctors if no clinics data
+      setAllDoctors([]);
+      setDoctors([]);
     }
   }, [clinics, doctorNames]);
 
@@ -188,28 +261,60 @@ const Book = () => {
       setIsFiltering(true);
       const availableIds = [];
 
-      for (const doctor of allDoctors) {
-        try {
-          // Check if doctor has available times on the selected date
-          const response = await fetch(
-            `https://ghaimcenter.com/laravel/api/clinics/available_times/${doctor.clinic_id}?staff_id=${doctor.id}&date=${selectedDate}`
-          );
-          const data = await response.json();
+      // Process doctors in batches to avoid overwhelming the server
+      const batchSize = 5;
+      const batches = [];
+      for (let i = 0; i < allDoctors.length; i += batchSize) {
+        batches.push(allDoctors.slice(i, i + batchSize));
+      }
 
-          // If there are available times, add doctor to available list
-          if (
-            data.status === "success" &&
-            data.data &&
-            Object.keys(data.data).length > 0
-          ) {
-            availableIds.push(doctor.id);
+      for (const batch of batches) {
+        const batchPromises = batch.map(async (doctor) => {
+          try {
+            // Check if doctor has available times on the selected date
+            const response = await fetch(
+              `https://ghaimcenter.com/laravel/api/clinics/available_times/${doctor.clinic_id}?staff_id=${doctor.id}&date=${selectedDate}`,
+              { 
+                method: 'GET',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                // Add timeout to prevent hanging requests
+                signal: AbortSignal.timeout(5000)
+              }
+            );
+            
+            if (!response.ok) {
+              console.warn(`HTTP error for doctor ${doctor.id}: ${response.status}`);
+              return null;
+            }
+
+            const data = await response.json();
+
+            // If there are available times, add doctor to available list
+            if (
+              data.status === "success" &&
+              data.data &&
+              Object.keys(data.data).length > 0
+            ) {
+              return doctor.id;
+            }
+            return null;
+          } catch (error) {
+            console.warn(
+              `Error checking availability for doctor ${doctor.id}:`,
+              error.message
+            );
+            return null;
           }
-        } catch (error) {
-          console.error(
-            `Error checking availability for doctor ${doctor.id}:`,
-            error
-          );
-        }
+        });
+
+        const batchResults = await Promise.allSettled(batchPromises);
+        batchResults.forEach(result => {
+          if (result.status === 'fulfilled' && result.value) {
+            availableIds.push(result.value);
+          }
+        });
       }
 
       setAvailableDoctorIds(availableIds);
@@ -251,105 +356,113 @@ const Book = () => {
 
   // Filter doctors based on selected filters
   useEffect(() => {
-    const filterDoctors = async () => {
-      setIsFiltering(true);
+    const filterDoctors = () => {
+      // Use requestAnimationFrame for better performance
+      requestAnimationFrame(() => {
+        setIsFiltering(true);
 
-      // Small delay to show loading state
-      await new Promise((resolve) => setTimeout(resolve, 300));
+        // Use useMemo-like optimization for filtering
+        let filtered = allDoctors;
 
-      let filtered = [...allDoctors];
+        // Early return if no doctors
+        if (!Array.isArray(allDoctors) || allDoctors.length === 0) {
+          setDoctors([]);
+          setCurrentPage(1);
+          setIsFiltering(false);
+          return;
+        }
 
-      // Filter by city
-      if (selectedCity) {
-        filtered = filtered.filter(
-          (doctor) =>
-            doctor.clinic_address &&
-            doctor.clinic_address.includes(selectedCity)
-        );
-      }
+        // Apply filters in order of selectivity (most selective first)
+        
+        // Filter by clinic (most selective)
+        if (selectedClinic) {
+          filtered = filtered.filter(
+            (doctor) => doctor.clinic_id === selectedClinic
+          );
+        }
 
-      // Filter by clinic
-      if (selectedClinic) {
-        filtered = filtered.filter(
-          (doctor) => doctor.clinic_id === selectedClinic
-        );
-      }
+        // Filter by category (specialty) - very selective
+        if (selectedCategory) {
+          filtered = filtered.filter((doctor) => {
+            if (!doctor.clinic_categories) return false;
+            const categoryIds = doctor.clinic_categories
+              .split(",")
+              .map((id) => id.trim());
+            return categoryIds.includes(selectedCategory.toString());
+          });
+        }
 
-      // Filter by doctor name (from dropdown)
-      if (selectedDoctor) {
-        filtered = filtered.filter(
-          (doctor) => doctor.name && doctor.name.includes(selectedDoctor)
-        );
-      }
+        // Filter by date availability - selective
+        if (selectedDate && availableDoctorIds.length > 0) {
+          filtered = filtered.filter((doctor) =>
+            availableDoctorIds.includes(doctor.id)
+          );
+        }
 
-      // Filter by search name (from search box)
-      if (searchName.trim()) {
-        filtered = filtered.filter(
-          (doctor) =>
-            doctor.name &&
-            doctor.name.toLowerCase().includes(searchName.toLowerCase())
-        );
-      }
+        // Filter by price range - moderately selective
+        if (selectedPriceRange) {
+          filtered = filtered.filter((doctor) => {
+            const minPrice = doctor.min_price || 0;
+            const maxPrice = doctor.max_price || 0;
 
-      // Filter by category (specialty)
-      if (selectedCategory) {
-        filtered = filtered.filter((doctor) => {
-          if (!doctor.clinic_categories) return false;
-          const categoryIds = doctor.clinic_categories
-            .split(",")
-            .map((id) => id.trim());
-          return categoryIds.includes(selectedCategory.toString());
-        });
-      }
+            // Skip doctors without price information
+            if (minPrice === 0 && maxPrice === 0) {
+              return false;
+            }
 
-      // Filter by price range
-      if (selectedPriceRange) {
-        filtered = filtered.filter((doctor) => {
-          const minPrice = doctor.min_price || 0;
-          const maxPrice = doctor.max_price || 0;
+            switch (selectedPriceRange) {
+              case "under100":
+                return minPrice > 0 && minPrice < 100;
+              case "100-300":
+                return (
+                  (minPrice >= 100 && minPrice <= 300) ||
+                  (maxPrice >= 100 && maxPrice <= 300) ||
+                  (minPrice < 100 && maxPrice > 300)
+                );
+              case "300-500":
+                return (
+                  (minPrice >= 300 && minPrice <= 500) ||
+                  (maxPrice >= 300 && maxPrice <= 500) ||
+                  (minPrice < 300 && maxPrice > 500)
+                );
+              case "over500":
+                return maxPrice > 500 || minPrice > 500;
+              default:
+                return true;
+            }
+          });
+        }
 
-          // Skip doctors without price information
-          if (minPrice === 0 && maxPrice === 0) {
-            return false;
-          }
+        // Filter by city - less selective
+        if (selectedCity) {
+          filtered = filtered.filter(
+            (doctor) =>
+              doctor.clinic_address &&
+              doctor.clinic_address.includes(selectedCity)
+          );
+        }
 
-          switch (selectedPriceRange) {
-            case "under100":
-              // Show if min_price is under 100
-              return minPrice > 0 && minPrice < 100;
-            case "100-300":
-              // Show if price range overlaps with 100-300
-              return (
-                (minPrice >= 100 && minPrice <= 300) ||
-                (maxPrice >= 100 && maxPrice <= 300) ||
-                (minPrice < 100 && maxPrice > 300)
-              );
-            case "300-500":
-              // Show if price range overlaps with 300-500
-              return (
-                (minPrice >= 300 && minPrice <= 500) ||
-                (maxPrice >= 300 && maxPrice <= 500) ||
-                (minPrice < 300 && maxPrice > 500)
-              );
-            case "over500":
-              // Show if max_price is over 500 or min_price is over 500
-              return maxPrice > 500 || minPrice > 500;
-            default:
-              return true;
-          }
-        });
-      }
+        // Filter by doctor name (from dropdown) - less selective
+        if (selectedDoctor) {
+          filtered = filtered.filter(
+            (doctor) => doctor.name && doctor.name.includes(selectedDoctor)
+          );
+        }
 
-      // Filter by date availability
-      if (selectedDate && availableDoctorIds.length > 0) {
-        filtered = filtered.filter((doctor) =>
-          availableDoctorIds.includes(doctor.id)
-        );
-      }
+        // Filter by search name (from search box) - least selective, do last
+        if (debouncedSearchName.trim()) {
+          const searchTerm = debouncedSearchName.toLowerCase();
+          filtered = filtered.filter(
+            (doctor) =>
+              doctor.name &&
+              doctor.name.toLowerCase().includes(searchTerm)
+          );
+        }
 
-      setDoctors(filtered);
-      setCurrentPage(1);
-      setIsFiltering(false);
+        setDoctors(filtered);
+        setCurrentPage(1);
+        setIsFiltering(false);
+      });
     };
 
     filterDoctors();
@@ -360,7 +473,7 @@ const Book = () => {
     selectedCategory,
     selectedPriceRange,
     selectedDate,
-    searchName,
+    debouncedSearchName,
     availableDoctorIds,
     allDoctors,
   ]);
@@ -376,10 +489,10 @@ const Book = () => {
     setCurrentImage((prev) => (prev - 1 + bannersLength) % bannersLength);
   }, [HOME_DATA.banners?.length]);
 
-  // Get category names from IDs
+  // Get category names from IDs - memoized for better performance
   const getCategoryNames = useCallback(
     (categoryIds) => {
-      if (!categoryIds) return "";
+      if (!categoryIds || !Array.isArray(categories)) return "";
       const ids = categoryIds.split(",").map((id) => parseInt(id.trim()));
       const names = categories
         .filter((cat) => ids.includes(cat.id))
@@ -389,14 +502,28 @@ const Book = () => {
     [categories]
   );
 
+  // Memoize category lookup for better performance
+  const categoryLookup = useMemo(() => {
+    if (!Array.isArray(categories)) return new Map();
+    const lookup = new Map();
+    categories.forEach(cat => {
+      lookup.set(cat.id, cat.title_ar || cat.title);
+    });
+    return lookup;
+  }, [categories]);
+
   // Render stars based on rating
   const normalizeRatingToFive = (value) => {
+    if (!value && value !== 0) return 0;
+    
     let r = parseFloat(value);
     if (!isFinite(r) || isNaN(r)) return 0;
+    
     // Normalize common scales
     if (r > 5 && r <= 10)
       r = r / 2; // 0-10 scale
     else if (r > 10 && r <= 100) r = r / 20; // 0-100 percentage to 0-5
+    
     // Clamp and round to nearest 0.5
     r = Math.max(0, Math.min(5, r));
     return Math.round(r * 2) / 2;
@@ -442,11 +569,17 @@ const Book = () => {
     return stars;
   };
 
-  // Pagination logic
-  const totalPages = Math.ceil(doctors.length / ITEMS_PER_PAGE);
-  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  const endIndex = startIndex + ITEMS_PER_PAGE;
-  const currentDoctors = doctors.slice(startIndex, endIndex);
+  // Pagination logic - memoized for better performance
+  const paginationData = useMemo(() => {
+    const totalPages = Math.ceil(doctors.length / ITEMS_PER_PAGE);
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    const currentDoctors = doctors.slice(startIndex, endIndex);
+    
+    return { totalPages, startIndex, endIndex, currentDoctors };
+  }, [doctors, currentPage]);
+
+  const { totalPages, currentDoctors } = paginationData;
 
   const handlePageChange = (page) => {
     setCurrentPage(page);
@@ -685,6 +818,7 @@ const Book = () => {
                         <img
                           src={doctor.photo || "/imge.png"}
                           alt={doctor.name}
+                          loading="lazy"
                           onError={(e) => {
                             e.target.src = "/imge.png";
                           }}
@@ -973,7 +1107,7 @@ const Book = () => {
                     }}
                   >
                     <option value="">جميع المراكز الطبية</option>
-                    {clinics.map((clinic) => (
+                    {Array.isArray(clinics) && clinics.map((clinic) => (
                       <option key={clinic.id} value={clinic.id}>
                         {clinic.clinic_name}
                       </option>
@@ -998,7 +1132,7 @@ const Book = () => {
                     }}
                   >
                     <option value="">جميع التخصصات</option>
-                    {categories.map((category) => (
+                    {Array.isArray(categories) && categories.map((category) => (
                       <option key={category.id} value={category.id.toString()}>
                         {category.title_ar || category.title}
                       </option>
@@ -1023,7 +1157,7 @@ const Book = () => {
                     }}
                   >
                     <option value="">جميع الأطباء</option>
-                    {doctorNames.map((doctorName, index) => (
+                    {Array.isArray(doctorNames) && doctorNames.map((doctorName, index) => (
                       <option key={index} value={doctorName}>
                         {doctorName}
                       </option>

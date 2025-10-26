@@ -1,0 +1,192 @@
+/* ============================================
+   CATEGORY SERVICES - ENHANCED STYLES
+   Author: GHYM Medical Team
+   Description: Enhanced styles for category services page
+============================================ */
+
+/* Enhanced loading animation */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Category header enhancements */
+.gym-services-page .gym-services-count-display h2 {
+  background: linear-gradient(135deg, #0171BD, #015a9a);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: 700;
+}
+
+/* Enhanced service cards */
+.gym-services-page .gym-service-card {
+  animation: fadeIn 0.6s ease-out;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform, box-shadow;
+}
+
+.gym-services-page .gym-service-card:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 
+    0 8px 25px rgba(0, 0, 0, 0.15),
+    0 4px 12px rgba(1, 113, 189, 0.2);
+}
+
+/* Enhanced price display */
+.gym-services-page .gym-service-price {
+  background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+  padding: 8px 12px;
+  border-radius: 8px;
+  margin-top: 8px;
+  border: 1px solid rgba(1, 113, 189, 0.1);
+}
+
+/* Service duration styling */
+.gym-service-duration {
+  background: rgba(1, 113, 189, 0.1);
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 11px !important;
+  font-weight: 500;
+  color: #0171BD !important;
+  display: inline-block;
+  margin-top: 6px;
+}
+
+/* Enhanced filter dropdown */
+.gym-services-page .gym-services-sort-dropdown li {
+  transition: all 0.2s ease;
+  border-radius: 6px;
+  margin: 2px 4px;
+}
+
+.gym-services-page .gym-services-sort-dropdown li:hover {
+  background: linear-gradient(135deg, #0171BD, #015a9a);
+  color: white;
+  transform: translateX(-2px);
+}
+
+.gym-services-page .gym-services-sort-dropdown li:hover span:last-child {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* Enhanced empty state */
+.gym-services-page .empty-state {
+  animation: fadeIn 0.8s ease-out;
+}
+
+.gym-services-page .empty-state button {
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.gym-services-page .empty-state button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.gym-services-page .empty-state button:hover::before {
+  left: 100%;
+}
+
+.gym-services-page .empty-state button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(1, 113, 189, 0.3);
+}
+
+/* Enhanced loading state */
+.gym-services-page .loading-spinner {
+  animation: spin 1s linear infinite;
+}
+
+.gym-services-page .loading-pulse {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+  .gym-services-page .gym-service-card:hover {
+    transform: translateY(-4px) scale(1.01);
+  }
+  
+  .gym-services-page .gym-service-card:active {
+    transform: translateY(-2px) scale(0.98);
+  }
+  
+  .gym-services-page .gym-services-count-display h2 {
+    font-size: 18px;
+  }
+  
+  .gym-services-page .gym-service-duration {
+    font-size: 10px !important;
+    padding: 3px 6px;
+  }
+}
+
+/* Accessibility improvements */
+.gym-services-page .gym-service-card:focus {
+  outline: 2px solid #0171BD;
+  outline-offset: 2px;
+}
+
+.gym-services-page .gym-service-card:focus-visible {
+  outline: 2px solid #0171BD;
+  outline-offset: 2px;
+}
+
+/* Performance optimizations */
+.gym-services-page .gym-service-image {
+  will-change: transform;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+}
+
+.gym-services-page .gym-service-overlay {
+  will-change: opacity;
+  backface-visibility: hidden;
+}
+
+/* Enhanced grid responsiveness */
+@media (min-width: 1200px) {
+  .gym-services-page .gym-services-cards-grid {
+    grid-template-columns: repeat(5, 1fr);
+  }
+}
+
+@media (min-width: 1600px) {
+  .gym-services-page .gym-services-cards-grid {
+    grid-template-columns: repeat(6, 1fr);
+  }
+}
+
+/* Print styles */
+@media print {
+  .gym-services-page .gym-service-overlay,
+  .gym-services-page .gym-services-filter-bar {
+    display: none !important;
+  }
+  
+  .gym-services-page .gym-service-card {
+    break-inside: avoid;
+    box-shadow: none;
+    border: 1px solid #ddd;
+  }
+}

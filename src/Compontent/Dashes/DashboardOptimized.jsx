@@ -22,6 +22,14 @@ import NewBookingFilter from './Filters/NewBookingFilter';
 const DashboardOptimized = () => {
   const navigate = useNavigate();
   const [activeFilter, setActiveFilter] = useState('الرئيسية');
+  
+  // Check if user is logged in
+  useEffect(() => {
+    const token = localStorage.getItem('userToken');
+    if (!token) {
+      navigate('/auth/login');
+    }
+  }, [navigate]);
   const [isEditing, setIsEditing] = useState(false);
   const [profileData, setProfileData] = useState({
     fullName: '',

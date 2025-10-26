@@ -6,6 +6,8 @@ const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [categories, setCategories] = useState([]);
+  const [showCategoriesInNavbar, setShowCategoriesInNavbar] = useState(false);
   const navigate = useNavigate();
 
   // Toggle menu - memoized with useCallback
@@ -35,6 +37,80 @@ const Header = () => {
       window.removeEventListener('storage', checkLoginStatus);
     };
   }, []);
+
+  // Fetch categories from API
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await fetch(
+          "https://ghaimcenter.com/laravel/api/clinics/services-in-categories"
+        );
+        const result = await response.json();
+        
+        if (result.status === "success" && result.data) {
+          // Handle new data structure - data is now in result.data.data
+          const categoriesData = result.data.data || result.data;
+          const homePageSettings = result.data.home_page_setting;
+          
+          console.log("🔍 Full result:", result);
+          console.log("🔍 Home page settings:", homePageSettings);
+          console.log("🔍 Categories data:", categoriesData);
+          
+          // Check if categories should be shown in navbar
+          const shouldShowCategories = homePageSettings && homePageSettings.categories_in_navbar === 1;
+          
+          console.log("🔍 shouldShowCategories:", shouldShowCategories);
+          console.log("🔍 homePageSettings.categories_in_navbar:", homePageSettings?.categories_in_navbar);
+          
+          if (shouldShowCategories) {
+            console.log("✅ Categories enabled in navbar setting");
+          } else {
+            console.log("❌ Categories not enabled in navbar setting");
+          }
+          
+          // Get first 3 categories that have services
+          const categoriesWithServices = Object.entries(categoriesData)
+            .filter(([categoryName, categoryData]) => 
+              categoryData.category_info && 
+              categoryData.services && 
+              categoryData.services.length > 0
+            )
+            .slice(0, 3) // Take only first 3 categories
+            .map(([categoryName, categoryData]) => ({
+              id: categoryData.category_info.id,
+              name: categoryData.category_info.title_ar || categoryName,
+              title_ar: categoryData.category_info.title_ar,
+              title_en: categoryData.category_info.title_en,
+              icon: categoryData.category_info.icon
+            }));
+          
+          if (categoriesWithServices.length > 0) {
+            console.log("✅ Categories loaded for navbar:", categoriesWithServices);
+            console.log("🔍 Setting showCategoriesInNavbar to:", shouldShowCategories);
+            // Use the setting from API
+            setShowCategoriesInNavbar(shouldShowCategories);
+            setCategories(categoriesWithServices);
+            console.log("🔍 Categories state updated - shouldShowCategories:", shouldShowCategories, "categories count:", categoriesWithServices.length);
+          } else {
+            console.log("❌ No categories with services found");
+            setShowCategoriesInNavbar(false);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching categories:", error);
+        setShowCategoriesInNavbar(false);
+      }
+    };
+
+    fetchCategories();
+  }, []);
+
+  // Handle category click
+  const handleCategoryClick = useCallback((categoryId) => {
+    console.log("Category clicked:", categoryId);
+    navigate(`/services?category_id=${categoryId}`);
+  }, [navigate]);
+
 
   // Handle logout
   const handleLogout = useCallback(() => {
@@ -89,6 +165,9 @@ const Header = () => {
     [isScrolled]
   );
 
+  // Debug render
+  console.log("🔍 Header render - showCategoriesInNavbar:", showCategoriesInNavbar, "categories:", categories);
+
   return (
     <>
       <header className={headerClassName}> 
@@ -127,6 +206,35 @@ const Header = () => {
               <Link to="/about" className="ghym-main-nav-item">من نحن</Link>
               <Link to="/blogs" className="ghym-main-nav-item">المدونة</Link>
               <Link to="/contact" className="ghym-main-nav-item">تواصل معنا</Link>
+              
+              {/* Categories - Only show if enabled and available - Moved to end */}
+              {showCategoriesInNavbar && categories.length > 0 && categories.map((category) => (
+                <button
+                  key={category.id}
+                  onClick={() => handleCategoryClick(category.id)}
+                  className="ghym-main-nav-item"
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#0874BE',
+                    font: 'inherit',
+                    cursor: 'pointer',
+                    padding: '0',
+                    textDecoration: 'none',
+                    fontWeight: '500',
+                    fontSize: '16px',
+                    transition: 'color 0.3s ease'
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.color = 'rgb(1, 113, 189)';
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.color = '#0874BE';
+                  }}
+                >
+                  {category.name}
+                </button>
+              ))}
             </div>
             
             {/* Login/Dashboard Buttons - Right side */}

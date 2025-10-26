@@ -17,9 +17,33 @@ const Services = React.memo(() => {
 
       try {
         const clinicId = searchParams.get("clinic_id");
+        const categoryId = searchParams.get("category_id");
 
+        // If category_id is provided, fetch specific category services
+        if (categoryId) {
+          console.log(`Fetching services for category ${categoryId}...`);
+
+          // Use the category services API endpoint
+          const response = await fetch(
+            `https://ghaimcenter.com/laravel/api/clinics/services?category_id=${categoryId}`
+          );
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          const result = await response.json();
+
+          if (result.status === "success" && result.data && result.data.services) {
+            setServicesData(result.data.services);
+            console.log("✅ Category services loaded:", result.data.services.length, "services");
+          } else {
+            setServicesData([]);
+            console.log("⚠️ No services found for this category");
+          }
+        }
         // If clinic_id is provided, fetch specific clinic services
-        if (clinicId) {
+        else if (clinicId) {
           console.log(`Fetching services for clinic ${clinicId}...`);
 
           // Use the specific clinic API endpoint instead
@@ -93,7 +117,7 @@ const Services = React.memo(() => {
 
   // Process services data based on structure (categories vs direct services) - optimized
   const processedServicesData = useMemo(() => {
-    // If servicesData is an array (clinic-specific or categories), return as is
+    // If servicesData is an array (clinic-specific, categories, or category services), return as is
     if (Array.isArray(servicesData)) {
       return servicesData;
     }
@@ -196,43 +220,7 @@ const Services = React.memo(() => {
     // Optimized title selection - use title_ar for categories
     const displayTitle = categoryTitle || service.title_ar || service.title || 'خدمة غير محددة';
 
-    // Handle touch events for mobile - prevent click when showing button
-    let touchStartTime = 0;
-    let touchMoved = false;
-
-    const handleTouchStart = (e) => {
-      touchStartTime = Date.now();
-      touchMoved = false;
-      e.currentTarget.classList.add('gym-service-card-touch');
-    };
-
-    const handleTouchMove = (e) => {
-      touchMoved = true;
-    };
-
-    const handleTouchEnd = (e) => {
-      const touchDuration = Date.now() - touchStartTime;
-      
-      // If touch was too short or moved, it's a scroll, not a click
-      if (touchDuration < 200 || touchMoved) {
-        e.currentTarget.classList.add('gym-service-card-scroll');
-        setTimeout(() => {
-          e.currentTarget.classList.remove('gym-service-card-touch');
-          e.currentTarget.classList.remove('gym-service-card-scroll');
-        }, 300);
-      } else {
-        // It's a click, remove touch class immediately
-        e.currentTarget.classList.remove('gym-service-card-touch');
-      }
-    };
-
     const handleCardClick = (e) => {
-      // Check if it was a scroll (not a click)
-      if (e.currentTarget.classList.contains('gym-service-card-scroll')) {
-        e.preventDefault();
-        e.stopPropagation();
-        return;
-      }
       handleServiceDetails(service);
     };
 
@@ -241,10 +229,9 @@ const Services = React.memo(() => {
         key={`${service.id}-${service.clinics_id || service.clinic_id || 'category'}`}
         className="gym-service-card"
         onClick={handleCardClick}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        style={{ cursor: "pointer" }}
+        style={{ 
+          cursor: "pointer"
+        }}
       >
         <img
           src={serviceImage}
@@ -276,6 +263,23 @@ const Services = React.memo(() => {
               {service.clinic.clinic_name}
             </p>
           )}
+          {service.price && !service.icon && (
+            <div className="gym-service-price">
+              {service.discount ? (
+                <span>
+                  <span style={{ textDecoration: 'line-through', color: '#999', marginLeft: '8px' }}>
+                    {service.price}
+                  </span>
+                  {service.price - service.discount}
+                </span>
+              ) : (
+                service.price
+              )}
+              <span style={{ marginLeft: '4px' }}>
+                <SaudiRiyalIcon />
+              </span>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -305,9 +309,11 @@ const Services = React.memo(() => {
           <div className="gym-services-count-display">
             {isLoading
               ? "جاري التحميل..."
-              : Array.isArray(servicesData) 
-                ? `تم إيجاد ${servicesData.length} فئة`
-                : `تم إيجاد ${processedServicesData.length} خدمة في ${Object.keys(servicesData).length} فئة`}
+              : searchParams.get("category_id")
+                ? `تم إيجاد ${servicesData.length} خدمة`
+                : Array.isArray(servicesData) 
+                  ? `تم إيجاد ${servicesData.length} فئة`
+                  : `تم إيجاد ${processedServicesData.length} خدمة في ${Object.keys(servicesData).length} فئة`}
           </div>
 
         </div>
@@ -353,7 +359,7 @@ const Services = React.memo(() => {
         ) : (
           <div className="gym-services-categories-container">
             {/* Check if we have categories data or direct services */}
-            {Array.isArray(servicesData) && servicesData.length > 0 && servicesData[0].icon ? (
+            {Array.isArray(servicesData) && servicesData.length > 0 && servicesData[0].icon && !searchParams.get("category_id") ? (
               // Categories display (for main services page) - Simplified without category headers
               <div className="gym-services-cards-grid">
                 {sortedServices.length === 0 ? (
@@ -374,7 +380,7 @@ const Services = React.memo(() => {
                 )}
               </div>
             ) : (
-              // Direct services display (for clinic-specific pages)
+              // Direct services display (for clinic-specific pages or category services)
               <div className="gym-services-cards-grid">
                 {sortedServices.length === 0 ? (
                   <div

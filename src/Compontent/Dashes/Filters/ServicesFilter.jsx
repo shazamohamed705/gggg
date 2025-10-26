@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   FaTooth,
   FaMoneyBillWave,
@@ -11,6 +12,7 @@ import {
 
 // Services filter component - Available services list
 const ServicesFilter = () => {
+  const navigate = useNavigate();
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -30,7 +32,10 @@ const ServicesFilter = () => {
           const result = await response.json();
           console.log("✅ Services data:", result);
 
-          setServices(result.data || []);
+          // Handle the API response structure properly
+          const servicesData = result.data?.services || result.data || [];
+          console.log("📋 Services array:", servicesData);
+          setServices(Array.isArray(servicesData) ? servicesData : []);
         } else {
           console.error("❌ Failed to fetch services");
         }
@@ -45,16 +50,31 @@ const ServicesFilter = () => {
   }, []);
 
   // Filter services based on search and category
-  const filteredServices = services.filter((service) => {
+  const filteredServices = Array.isArray(services) ? services.filter((service) => {
     const matchesSearch =
-      service.title_ar.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      service.about_ar.toLowerCase().includes(searchTerm.toLowerCase());
+      (service.title_ar || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (service.about_ar || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory =
       selectedCategory === "all" ||
-      service.category_id.toString() === selectedCategory;
+      (service.category_id || '').toString() === selectedCategory;
 
     return matchesSearch && matchesCategory;
-  });
+  }) : [];
+
+  // Handle view service details
+  const handleViewServiceDetails = (service) => {
+    console.log("🎯 Viewing service details:", service);
+    
+    // Navigate to service details page with clinic ID and service ID
+    const clinicId = service.clinic_id || service.clinics_id;
+    if (!clinicId) {
+      console.error("No clinic ID found for service:", service);
+      alert("خطأ: لم يتم العثور على معرف العيادة");
+      return;
+    }
+    
+    navigate(`/service/${clinicId}/${service.id}`);
+  };
 
   return (
     <div className="services-section">
@@ -98,8 +118,10 @@ const ServicesFilter = () => {
 
       {/* Services Grid */}
       {!loading && (
-        <div className="services-grid">
-          {filteredServices.map((service) => (
+        <>
+          {filteredServices.length > 0 ? (
+            <div className="services-grid">
+              {filteredServices.map((service) => (
             <div key={service.id} className="service-card">
               <div className="service-header">
                 <div
@@ -179,13 +201,28 @@ const ServicesFilter = () => {
                 </div>
               </div>
 
-              <button className="book-service-btn">
+              <button 
+                className="book-service-btn"
+                onClick={() => handleViewServiceDetails(service)}
+              >
                 <FaPlus className="btn-icon" />
                 حجز الخدمة
               </button>
             </div>
           ))}
-        </div>
+            </div>
+          ) : (
+            <div className="ios-empty-content">
+              <FaStethoscope className="ios-empty-icon" />
+              <div className="ios-empty-text">
+                <div className="ios-empty-title">لا توجد خدمات متاحة</div>
+                <div className="ios-empty-subtitle">
+                  لم يتم العثور على خدمات تطابق البحث
+                </div>
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

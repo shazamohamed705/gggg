@@ -12,11 +12,13 @@ import {
   FaCheck,
   FaArrowLeft,
   FaArrowRight,
+  FaUserMd,
 } from "react-icons/fa";
 import profileImage from "../../../assets/photo/service.png";
 import { hasAvailableStaff } from "../../../utils/clinicChecker";
 import "./AddressCards.css";
 import "./SimpleProgressBar.css";
+import "./ResponsiveGrid.css";
 
 // New booking filter component - Multi-step booking process
 const NewBookingFilter = ({
@@ -90,10 +92,22 @@ const NewBookingFilter = ({
 
   // Resolve selected clinic name -> numeric clinicId
   const selectedClinicId = useMemo(() => {
-    if (!selectedClinic) return null;
+    if (!selectedClinic) {
+      console.log("🔍 No selectedClinic");
+      return null;
+    }
     const match = clinics.find((c) => c.id === selectedClinic);
+    console.log("🔍 Looking for clinic:", selectedClinic);
+    console.log("🔍 Available clinics:", clinics.map(c => ({ id: c.id, clinicId: c.clinicId })));
+    console.log("🔍 Found match:", match);
     return match ? match.clinicId : null;
   }, [selectedClinic, clinics]);
+
+  // Track selectedClinic changes
+  useEffect(() => {
+    console.log("🏥 selectedClinic changed to:", selectedClinic);
+    console.log("🏥 selectedClinic type:", typeof selectedClinic);
+  }, [selectedClinic]);
 
   const completeBooking = async () => {
     try {
@@ -102,6 +116,49 @@ const NewBookingFilter = ({
 
       if (!token) {
         alert("يرجى تسجيل الدخول أولاً");
+        return;
+      }
+
+      // Validate all required fields
+      console.log("🔍 Validation - selectedClinic:", selectedClinic);
+      console.log("🔍 Validation - selectedClinicId:", selectedClinicId);
+      console.log("🔍 Validation - clinics array:", clinics);
+      
+      if (!selectedClinic) {
+        console.log("❌ No clinic selected");
+        alert("يرجى اختيار العيادة أولاً");
+        return;
+      }
+
+      if (!selectedClinicId) {
+        console.log("❌ No clinic ID found for selected clinic:", selectedClinic);
+        console.log("❌ Available clinics:", clinics.map(c => ({ id: c.id, clinicId: c.clinicId })));
+        alert("خطأ في بيانات العيادة المحددة");
+        return;
+      }
+
+      if (!selectedServiceId) {
+        alert("يرجى اختيار الخدمة أولاً");
+        return;
+      }
+
+      if (!selectedDoctorId) {
+        alert("يرجى اختيار الطبيب أولاً");
+        return;
+      }
+
+      if (!selectedAddressId) {
+        alert("يرجى اختيار العنوان أولاً");
+        return;
+      }
+
+      if (!selectedDate) {
+        alert("يرجى اختيار التاريخ أولاً");
+        return;
+      }
+
+      if (!selectedTime) {
+        alert("يرجى اختيار الوقت أولاً");
         return;
       }
 
@@ -117,6 +174,14 @@ const NewBookingFilter = ({
       };
 
       console.log("📤 Creating booking with:", bookingData);
+      console.log("🔍 Debug info:");
+      console.log("🔍 selectedClinic:", selectedClinic);
+      console.log("🔍 selectedClinicId:", selectedClinicId);
+      console.log("🔍 selectedServiceId:", selectedServiceId);
+      console.log("🔍 selectedDoctorId:", selectedDoctorId);
+      console.log("🔍 selectedAddressId:", selectedAddressId);
+      console.log("🔍 selectedDate:", selectedDate);
+      console.log("🔍 selectedTime:", selectedTime);
 
       const createResponse = await fetch(
         "https://ghaimcenter.com/laravel/api/user/bookings",
@@ -207,9 +272,10 @@ const NewBookingFilter = ({
       setSelectedDoctorName(doctorName);
       setBookingSuccess(true);
 
-      // Reset all booking data
+      // Reset all booking data except clinic selection
       setCurrentBookingStep(1);
-      setSelectedClinic(null);
+      // Keep clinic selected for potential new bookings
+      // setSelectedClinic(null);
       setSelectedServiceId(null);
       setSelectedDoctorId(null);
       setSelectedAddressId(null);
@@ -681,7 +747,7 @@ const NewBookingFilter = ({
                 {currentBookingStep > 2 ? (
                   <FaCheck className="simple-step-icon-svg" />
                 ) : (
-                  <FaHeadphones className="simple-step-icon-svg" />
+                  <FaUserMd className="simple-step-icon-svg" />
                 )}
               </div>
               <span className="simple-step-name">الخدمة</span>
@@ -732,15 +798,7 @@ const NewBookingFilter = ({
         {currentBookingStep === 1 && !bookingSuccess && (
           <>
             <h3 className="content-title">اختر العيادة</h3>
-            <div
-              className="clinics-list"
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(2, 1fr)",
-                gap: "12px",
-                padding: "16px 0",
-              }}
-            >
+            <div className="clinics-list">
               {clinics.map((clinic) => {
                 // Check if this is the currently selected clinic and has data
                 const isSelected = selectedClinic === clinic.id;
@@ -753,22 +811,28 @@ const NewBookingFilter = ({
                   <div
                     key={clinic.id}
                     className={`clinic-card ${isSelected ? "selected" : ""}`}
-                    onClick={() => setSelectedClinic(clinic.id)}
+                    onClick={() => {
+                      console.log("🏥 Clinic clicked:", clinic.id);
+                      console.log("🏥 Setting selectedClinic to:", clinic.id);
+                      setSelectedClinic(clinic.id);
+                      console.log("🏥 selectedClinic after set:", clinic.id);
+                    }}
                     style={{
                       background: "white",
-                      borderRadius: "8px",
-                      padding: "12px",
-                      boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
+                      borderRadius: "12px",
+                      padding: "16px",
+                      boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
                       border: isSelected
-                        ? "2px solid #e5e7eb"
-                        : "1px solid #f3f4f6",
+                        ? "2px solid #3b82f6"
+                        : "1px solid #e5e7eb",
                       cursor: "pointer",
                       transition: "all 0.2s ease",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "space-between",
-                      minHeight: "60px",
+                      minHeight: "80px",
                       position: "relative",
+                      marginBottom: "8px",
                     }}
                   >
                     {/* Status indicator */}
@@ -797,15 +861,15 @@ const NewBookingFilter = ({
                     >
                       <div
                         style={{
-                          width: "32px",
-                          height: "32px",
+                          width: "40px",
+                          height: "40px",
                           borderRadius: "50%",
                           background: "#f0f9ff",
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
-                          color: "#0ea5e9",
-                          fontSize: "14px",
+                          color: "#3b82f6",
+                          fontSize: "16px",
                         }}
                       >
                         <FaMapMarkerAlt />
@@ -814,8 +878,8 @@ const NewBookingFilter = ({
                         <h4
                           className="clinic-name"
                           style={{
-                            margin: "0 0 2px 0",
-                            fontSize: "14px",
+                            margin: "0 0 4px 0",
+                            fontSize: "16px",
                             fontWeight: "600",
                             color: "#1f2937",
                           }}
@@ -826,7 +890,7 @@ const NewBookingFilter = ({
                           className="clinic-location"
                           style={{
                             margin: "0",
-                            fontSize: "12px",
+                            fontSize: "14px",
                             color: "#6b7280",
                           }}
                         >
@@ -895,15 +959,7 @@ const NewBookingFilter = ({
           <>
             <div className="ghym-srv-scope-1">
               <h3 className="content-title ghym-srv-title">اختر الخدمة</h3>
-              <div
-                className="clinics-list ghym-srv-services-list"
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(2, 1fr)",
-                  gap: "16px",
-                  padding: "16px 0",
-                }}
-              >
+              <div className="clinics-list ghym-srv-services-list">
                 {(bookingServicesFromApi.length > 0
                   ? bookingServicesFromApi
                   : bookingServices
@@ -917,13 +973,14 @@ const NewBookingFilter = ({
                       borderRadius: "12px",
                       padding: "20px",
                       boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-                      border: "none",
+                      border: selectedServiceId === service.id ? "2px solid #3b82f6" : "1px solid #e5e7eb",
                       cursor: "pointer",
                       transition: "all 0.2s ease",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "space-between",
-                      minHeight: "100px",
+                      minHeight: "120px",
+                      marginBottom: "12px",
                     }}
                   >
                     <div
@@ -937,15 +994,15 @@ const NewBookingFilter = ({
                     >
                       <div
                         style={{
-                          width: "48px",
-                          height: "48px",
+                          width: "56px",
+                          height: "56px",
                           borderRadius: "50%",
                           background: "#f0f9ff",
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
-                          color: "#0ea5e9",
-                          fontSize: "18px",
+                          color: "#3b82f6",
+                          fontSize: "20px",
                         }}
                       >
                         <FaStethoscope />
@@ -1019,15 +1076,7 @@ const NewBookingFilter = ({
           <>
             <h3 className="content-title">اختر الطبيب</h3>
             {clinicStaff.length > 0 ? (
-              <div
-                className="clinics-list"
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(2, 1fr)",
-                  gap: "12px",
-                  padding: "16px 0",
-                }}
-              >
+              <div className="clinics-list">
                 {clinicStaff.map((staff) => (
                   <div
                     key={staff.id}
@@ -1039,19 +1088,20 @@ const NewBookingFilter = ({
                     }}
                     style={{
                       background: "white",
-                      borderRadius: "8px",
-                      padding: "12px",
-                      boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
+                      borderRadius: "12px",
+                      padding: "16px",
+                      boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
                       border:
                         selectedDoctorId === staff.id
-                          ? "2px solid #e5e7eb"
-                          : "1px solid #f3f4f6",
+                          ? "2px solid #3b82f6"
+                          : "1px solid #e5e7eb",
                       cursor: "pointer",
                       transition: "all 0.2s ease",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "space-between",
-                      minHeight: "60px",
+                      minHeight: "80px",
+                      marginBottom: "8px",
                     }}
                   >
                     <div
@@ -1065,15 +1115,15 @@ const NewBookingFilter = ({
                     >
                       <div
                         style={{
-                          width: "32px",
-                          height: "32px",
+                          width: "40px",
+                          height: "40px",
                           borderRadius: "50%",
                           background: "#f0f9ff",
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
-                          color: "#0ea5e9",
-                          fontSize: "14px",
+                          color: "#3b82f6",
+                          fontSize: "16px",
                         }}
                       >
                         <FaStethoscope />
@@ -1082,8 +1132,8 @@ const NewBookingFilter = ({
                         <h4
                           className="clinic-name"
                           style={{
-                            margin: "0 0 2px 0",
-                            fontSize: "14px",
+                            margin: "0 0 4px 0",
+                            fontSize: "16px",
                             fontWeight: "600",
                             color: "#1f2937",
                           }}
@@ -1094,7 +1144,7 @@ const NewBookingFilter = ({
                           className="clinic-location"
                           style={{
                             margin: "0",
-                            fontSize: "12px",
+                            fontSize: "14px",
                             color: "#6b7280",
                           }}
                         >
@@ -1234,21 +1284,47 @@ const NewBookingFilter = ({
             <div className="booking-date-time-content">
               {/* Calendar Card */}
               <div className="booking-calendar-card">
-                <div className="booking-calendar-header">
+                <div className="booking-calendar-header" style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: "20px",
+                  padding: "0 4px"
+                }}>
                   <button
                     className="booking-calendar-nav-btn-small"
                     onClick={goToPreviousMonth}
+                    style={{
+                      background: "#f3f4f6",
+                      border: "none",
+                      borderRadius: "8px",
+                      padding: "8px 12px",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "#374151",
+                      fontSize: "14px"
+                    }}
                   >
                     <FaArrowLeft />
                   </button>
-                  <h4 className="booking-calendar-month">
+                  <h4 className="booking-calendar-month" style={{
+                    fontSize: "18px",
+                    fontWeight: "600",
+                    color: "#1f2937",
+                    margin: "0",
+                    textAlign: "center",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px"
+                  }}>
                     {getMonthName(currentMonth)} {currentYear}
                     {daysLoading && (
                       <span
                         style={{
                           fontSize: "12px",
                           color: "#6b7280",
-                          marginLeft: "8px",
                           display: "flex",
                           alignItems: "center",
                           gap: "4px",
@@ -1264,20 +1340,83 @@ const NewBookingFilter = ({
                   <button
                     className="booking-calendar-nav-btn-small"
                     onClick={goToNextMonth}
+                    style={{
+                      background: "#f3f4f6",
+                      border: "none",
+                      borderRadius: "8px",
+                      padding: "8px 12px",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "#374151",
+                      fontSize: "14px"
+                    }}
                   >
                     <FaArrowRight />
                   </button>
                 </div>
-                <div className="booking-calendar-weekdays">
-                  <div className="booking-weekday">Sa</div>
-                  <div className="booking-weekday">Su</div>
-                  <div className="booking-weekday">Mo</div>
-                  <div className="booking-weekday">Tu</div>
-                  <div className="booking-weekday">We</div>
-                  <div className="booking-weekday">Th</div>
-                  <div className="booking-weekday">Fr</div>
+                <div className="booking-calendar-weekdays" style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(7, 1fr)",
+                  gap: "4px",
+                  marginBottom: "12px"
+                }}>
+                  <div className="booking-weekday" style={{
+                    textAlign: "center",
+                    fontSize: "12px",
+                    fontWeight: "600",
+                    color: "#6b7280",
+                    padding: "8px 4px"
+                  }}>Sa</div>
+                  <div className="booking-weekday" style={{
+                    textAlign: "center",
+                    fontSize: "12px",
+                    fontWeight: "600",
+                    color: "#6b7280",
+                    padding: "8px 4px"
+                  }}>Su</div>
+                  <div className="booking-weekday" style={{
+                    textAlign: "center",
+                    fontSize: "12px",
+                    fontWeight: "600",
+                    color: "#6b7280",
+                    padding: "8px 4px"
+                  }}>Mo</div>
+                  <div className="booking-weekday" style={{
+                    textAlign: "center",
+                    fontSize: "12px",
+                    fontWeight: "600",
+                    color: "#6b7280",
+                    padding: "8px 4px"
+                  }}>Tu</div>
+                  <div className="booking-weekday" style={{
+                    textAlign: "center",
+                    fontSize: "12px",
+                    fontWeight: "600",
+                    color: "#6b7280",
+                    padding: "8px 4px"
+                  }}>We</div>
+                  <div className="booking-weekday" style={{
+                    textAlign: "center",
+                    fontSize: "12px",
+                    fontWeight: "600",
+                    color: "#6b7280",
+                    padding: "8px 4px"
+                  }}>Th</div>
+                  <div className="booking-weekday" style={{
+                    textAlign: "center",
+                    fontSize: "12px",
+                    fontWeight: "600",
+                    color: "#6b7280",
+                    padding: "8px 4px"
+                  }}>Fr</div>
                 </div>
-                <div className="booking-calendar-grid">
+                <div className="booking-calendar-grid" style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(7, 1fr)",
+                  gap: "6px"
+                }}>
                   {(() => {
                     // Generate array of days for current month
                     const daysInMonth = new Date(
@@ -1339,6 +1478,29 @@ const NewBookingFilter = ({
                             ? "pointer"
                             : "not-allowed",
                           opacity: isActuallyUnavailable ? 0.4 : 1,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          height: "40px",
+                          borderRadius: "8px",
+                          fontSize: "14px",
+                          fontWeight: "500",
+                          transition: "all 0.2s ease",
+                          background: isSelected 
+                            ? "#3b82f6" 
+                            : isActuallyAvailable 
+                              ? "#f0f9ff" 
+                              : "#f9fafb",
+                          color: isSelected 
+                            ? "white" 
+                            : isActuallyAvailable 
+                              ? "#1e40af" 
+                              : "#9ca3af",
+                          border: isSelected 
+                            ? "2px solid #3b82f6" 
+                            : isActuallyAvailable 
+                              ? "1px solid #3b82f6" 
+                              : "1px solid #e5e7eb"
                         }}
                       >
                         {day}
@@ -1350,39 +1512,124 @@ const NewBookingFilter = ({
 
               {/* Available Times Card */}
               <div className="booking-times-card">
-                <div className="booking-times-card-header">
-                  <div className="booking-times-card-icon">
-                    <FaClock />
+                <div className="booking-times-card-header" style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: "16px",
+                  padding: "0 4px"
+                }}>
+                  <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "12px"
+                  }}>
+                    <div className="booking-times-card-icon" style={{
+                      width: "40px",
+                      height: "40px",
+                      borderRadius: "50%",
+                      background: "#f0f9ff",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "#3b82f6",
+                      fontSize: "16px"
+                    }}>
+                      <FaClock />
+                    </div>
+                    <h4 className="booking-times-card-title" style={{
+                      fontSize: "18px",
+                      fontWeight: "600",
+                      color: "#1f2937",
+                      margin: "0"
+                    }}>المواعيد المتاحة</h4>
                   </div>
-                  <h4 className="booking-times-card-title">المواعيد المتاحة</h4>
-                  <div className="booking-times-card-badge">
+                  <div className="booking-times-card-badge" style={{
+                    background: "#3b82f6",
+                    color: "white",
+                    borderRadius: "12px",
+                    padding: "4px 12px",
+                    fontSize: "14px",
+                    fontWeight: "600"
+                  }}>
                     {availableTimes.length > 0 ? availableTimes.length : 0}
                   </div>
                 </div>
                 <div className="booking-times-card-content">
                   {timesLoading ? (
-                    <div className="booking-loading-times">
-                      <FaClock className="booking-loading-icon" />
-                      <p className="booking-loading-text">
+                    <div className="booking-loading-times" style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      padding: "40px 20px",
+                      textAlign: "center"
+                    }}>
+                      <FaClock className="booking-loading-icon" style={{
+                        fontSize: "32px",
+                        color: "#3b82f6",
+                        marginBottom: "12px",
+                        animation: "spin 1s linear infinite"
+                      }} />
+                      <p className="booking-loading-text" style={{
+                        fontSize: "16px",
+                        color: "#6b7280",
+                        margin: "0"
+                      }}>
                         جاري تحميل المواعيد...
                       </p>
                     </div>
                   ) : availableTimes.length > 0 ? (
-                    <div className="booking-times-grid">
+                    <div className="booking-times-grid" style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(3, 1fr)",
+                      gap: "8px"
+                    }}>
                       {availableTimes.map((timeSlot) => (
                         <div
                           key={timeSlot.value}
                           className={`booking-time-slot ${selectedTime === timeSlot.value ? "selected" : ""}`}
                           onClick={() => setSelectedTime(timeSlot.value)}
+                          style={{
+                            background: selectedTime === timeSlot.value ? "#3b82f6" : "#f9fafb",
+                            color: selectedTime === timeSlot.value ? "white" : "#374151",
+                            border: selectedTime === timeSlot.value ? "2px solid #3b82f6" : "1px solid #e5e7eb",
+                            borderRadius: "8px",
+                            padding: "8px 6px",
+                            textAlign: "center",
+                            fontSize: "14px",
+                            fontWeight: "500",
+                            cursor: "pointer",
+                            transition: "all 0.2s ease",
+                            minHeight: "36px",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center"
+                          }}
                         >
                           {timeSlot.time}
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <div className="booking-no-appointments">
-                      <FaClock className="booking-no-appointments-icon" />
-                      <p className="booking-no-appointments-text">
+                    <div className="booking-no-appointments" style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      padding: "40px 20px",
+                      textAlign: "center"
+                    }}>
+                      <FaClock className="booking-no-appointments-icon" style={{
+                        fontSize: "32px",
+                        color: "#d1d5db",
+                        marginBottom: "12px"
+                      }} />
+                      <p className="booking-no-appointments-text" style={{
+                        fontSize: "16px",
+                        color: "#6b7280",
+                        margin: "0"
+                      }}>
                         {selectedDate && selectedDoctorId && selectedServiceId
                           ? availableDays[selectedDate] === false
                             ? `لا توجد مواعيد متاحة في ${selectedDate} أكتوبر`
@@ -1399,13 +1646,34 @@ const NewBookingFilter = ({
       </div>
 
       {/* Footer Navigation */}
-      <div className="booking-footer">
+      <div className="booking-footer" style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        padding: "16px 0",
+        gap: "12px"
+      }}>
         {currentBookingStep > 1 && (
           <button
             className="booking-previous-btn"
             onClick={() => setCurrentBookingStep(currentBookingStep - 1)}
+            style={{
+              background: "#f3f4f6",
+              border: "none",
+              borderRadius: "8px",
+              padding: "8px 16px",
+              fontSize: "14px",
+              fontWeight: "500",
+              color: "#374151",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              transition: "all 0.2s ease",
+              minHeight: "36px"
+            }}
           >
-            السابق <FaArrowRight className="booking-previous-icon" />
+            السابق <FaArrowRight className="booking-previous-icon" style={{ fontSize: "12px" }} />
           </button>
         )}
         {currentBookingStep < 5 && (
@@ -1421,6 +1689,18 @@ const NewBookingFilter = ({
               (currentBookingStep === 4 && !selectedAddressId)
             }
             style={{
+              background: "#3b82f6",
+              border: "none",
+              borderRadius: "8px",
+              padding: "8px 16px",
+              fontSize: "14px",
+              fontWeight: "500",
+              color: "white",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              transition: "all 0.2s ease",
+              minHeight: "36px",
               opacity:
                 (currentBookingStep === 1 && !selectedClinic) ||
                 (currentBookingStep === 2 && !selectedServiceId) ||
@@ -1441,7 +1721,7 @@ const NewBookingFilter = ({
                   : "pointer",
             }}
           >
-            التالي <FaArrowLeft className="next-icon" />
+            التالي <FaArrowLeft className="next-icon" style={{ fontSize: "12px" }} />
           </button>
         )}
         {currentBookingStep === 5 && (
@@ -1450,11 +1730,23 @@ const NewBookingFilter = ({
             onClick={completeBooking}
             disabled={!selectedDate || !selectedTime}
             style={{
+              background: "#10b981",
+              border: "none",
+              borderRadius: "8px",
+              padding: "8px 16px",
+              fontSize: "14px",
+              fontWeight: "500",
+              color: "white",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              transition: "all 0.2s ease",
+              minHeight: "36px",
               opacity: selectedDate && selectedTime ? 1 : 0.5,
               cursor: selectedDate && selectedTime ? "pointer" : "not-allowed",
             }}
           >
-            تأكيد الحجز <FaCheck className="confirm-icon" />
+            تأكيد الحجز <FaCheck className="confirm-icon" style={{ fontSize: "12px" }} />
           </button>
         )}
       </div>

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import bannerImage from "../../assets/photo/baner1.webp";
 import banner2Image from "../../assets/photo/bamer 2.webp";
@@ -21,7 +21,7 @@ import { fetchHomePageData, fetchContactData, fetchBanners } from "../../utils/a
 // Constants moved outside component for better performance
 const CARD_WIDTH = 384 + 24; // w-96 (384px) + gap (approx 24px)
 const SERVICE_CARD_WIDTH = 320 + 24; // w-80 (320px) + gap (approx 24px)
-const AUTO_SCROLL_INTERVAL = 5000; // 5 seconds
+const AUTO_SCROLL_INTERVAL = 3000; // 3 seconds - faster for mobile
 // Display all active categories - no limit
 
 // Remove static IMAGES array - use dynamic HOME_DATA.banners instead
@@ -38,6 +38,15 @@ const Home = () => {
   const [MOST_BOOKING_SERVICES, setMOST_BOOKING_SERVICES] = useState([]);
   const [SERVICES_TITLE, setSERVICES_TITLE] = useState("أبرز خدمات غيم");
   const [CATEGORIES_DATA, setCATEGORIES_DATA] = useState({});
+  // Services by categories data
+  const [SERVICES_BY_CATEGORIES, setSERVICES_BY_CATEGORIES] = useState({});
+  
+  // Home page settings
+  const [HOME_PAGE_SETTINGS, setHOME_PAGE_SETTINGS] = useState({
+    categories_in_navbar: 0,
+    clinics_in_home_page: 1,
+    services_in_home_page: 1
+  });
 
   // Dynamic reviews data from API
   const [REVIEWS, setREVIEWS] = useState([]);
@@ -95,8 +104,11 @@ const Home = () => {
         );
         const result = await response.json();
         if (result.status === "success") {
-          // Extract only clinic name and photo from images array
-          const clinicsData = result.data.map((clinic) => ({
+          // Handle new data structure - clinics are now in result.data.data array
+          const clinicsArray = result.data.data || result.data;
+          
+          // Extract clinic information from the new structure
+          const clinicsData = clinicsArray.map((clinic) => ({
             id: clinic.id,
             name: clinic.clinic_name,
             // Try to get photo from images array first, then fallback to owner_photo
@@ -104,8 +116,15 @@ const Home = () => {
               clinic.images && clinic.images.length > 0
                 ? clinic.images[0].image
                 : clinic.owner_photo,
+            // Include additional clinic information if available
+            address: clinic.clinic_address,
+            phone: clinic.clinic_phone,
+            lat: clinic.clinic_lat,
+            lng: clinic.clinic_long,
+            categories: clinic.clinic_categories
           }));
           setCLINICS(clinicsData);
+          console.log("✅ Clinics loaded with new structure:", clinicsData);
         }
       } catch (error) {
         console.error("Error fetching clinics:", error);
@@ -301,11 +320,112 @@ const Home = () => {
     fetchContactDataApi();
   }, []);
 
-  // Fetch categories and services from new API
+  // Fetch services by categories from new API - optimized function
   useEffect(() => {
+    const fetchServicesByCategories = async () => {
+      try {
+        console.log("🔄 Fetching services by categories...");
+        
+        // Fetch services by categories from the new API endpoint
+        const response = await fetch(
+          "https://ghaimcenter.com/laravel/api/clinics/services-in-categories"
+        );
+        
+        if (!response.ok) {
+          throw new Error(`Services by categories API error! status: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        
+        if (result.status === "success" && result.data) {
+          console.log("✅ Services by categories loaded:", result.data);
+          
+          // Handle new data structure - data is now in result.data.data
+          const categoriesData = result.data.data || result.data;
+          const homePageSettings = result.data.home_page_setting;
+          
+          // Process the data to create a more efficient structure
+          const processedData = {};
+          
+          Object.entries(categoriesData).forEach(([categoryName, categoryData]) => {
+            // Skip empty categories or categories with no services
+            if (!categoryData.category_info || !categoryData.services || categoryData.services.length === 0) {
+              return;
+            }
+            
+            const categoryInfo = categoryData.category_info;
+            const services = categoryData.services;
+            
+            // Process services for this category
+            const processedServices = services.map((service) => ({
+              id: service.id,
+              title_ar: service.title_ar || service.title,
+              name: service.title_ar || service.title,
+              price: service.price > 0 ? service.price : "اتصل للسعر",
+              discount: service.discount,
+              image: service.images && service.images.length > 0 
+                ? service.images[0].image 
+                : serviceImage,
+              clinic_id: service.clinics_id || service.clinic_id,
+              clinics_id: service.clinics_id || service.clinic_id,
+              clinic_name: service.clinic?.clinic_name || "مجمع غيم الطبي",
+              category_id: service.category_id,
+              category_name: categoryInfo.title_ar || categoryInfo.title,
+              service_time: service.service_time,
+              about_ar: service.about_ar || service.about,
+              gender: service.gender,
+              status: service.status
+            }));
+            
+            // Only add categories that have services
+            if (processedServices.length > 0) {
+              processedData[categoryName] = {
+                category_info: {
+                  id: categoryInfo.id,
+                  title_ar: categoryInfo.title_ar || categoryInfo.title,
+                  title_en: categoryInfo.title_en,
+                  icon: categoryInfo.icon 
+                    ? `https://ghaimcenter.com/laravel/storage/app/public/${categoryInfo.icon}`
+                    : serviceImage
+                },
+                services: processedServices
+              };
+            }
+          });
+          
+          setSERVICES_BY_CATEGORIES(processedData);
+          console.log("✅ Processed services by categories:", processedData);
+          
+          // Update home page settings if available
+          if (homePageSettings) {
+            setHOME_PAGE_SETTINGS(homePageSettings);
+            console.log("✅ Home page settings loaded:", homePageSettings);
+          }
+          
+          // Also update MOST_BOOKING_SERVICES for backward compatibility
+          const allServices = Object.values(processedData)
+            .flatMap(category => category.services)
+            .slice(0, 3); // Take first 3 services for the main display
+          
+          setMOST_BOOKING_SERVICES(allServices);
+          
+          // Set initial title
+          if (allServices.length > 0) {
+            setSERVICES_TITLE(allServices[0].category_name || "خدمات غيم");
+          } else {
+            setSERVICES_TITLE("خدمات غيم");
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching services by categories:", error);
+        // Fallback to existing categories fetch
+        fetchCategoriesAndServices();
+      }
+    };
+    
+    // Fallback function for categories only (if services by categories fails)
     const fetchCategoriesAndServices = async () => {
       try {
-        // Fetch categories first
         const categoriesResponse = await fetch(
           "https://ghaimcenter.com/laravel/api/clinics/categories"
         );
@@ -317,14 +437,8 @@ const Home = () => {
         const categoriesResult = await categoriesResponse.json();
         
         if (categoriesResult.status === "success" && categoriesResult.data) {
-          console.log("📊 Total categories from API:", categoriesResult.data.length);
-          
-          // Filter only active categories (is_deleted = 0)
           const activeCategories = categoriesResult.data.filter(category => category.is_deleted === 0);
-          console.log("✅ Active categories:", activeCategories.length);
-          console.log("Active categories data:", activeCategories);
           
-          // Create services from categories - display all active categories
           const servicesFromCategories = activeCategories
             .map((category) => ({
               id: category.id,
@@ -344,23 +458,18 @@ const Home = () => {
           
           setMOST_BOOKING_SERVICES(servicesFromCategories);
           
-          // Set initial title based on the first category
           if (servicesFromCategories.length > 0) {
             setSERVICES_TITLE(servicesFromCategories[0].category_name);
           } else {
             setSERVICES_TITLE("خدمات غيم");
           }
-          
-          console.log("✅ Final services count:", servicesFromCategories.length, "services");
-          console.log("Final services data:", servicesFromCategories);
         }
       } catch (error) {
         console.error("Error fetching categories:", error);
-        // Keep existing services as fallback
       }
     };
     
-    fetchCategoriesAndServices();
+    fetchServicesByCategories();
   }, []);
 
   // Helper function to format working hours
@@ -410,9 +519,15 @@ const Home = () => {
     [navigate]
   );
 
-  // Navigate to service details page - optimized for categories
+  // Navigate to service details page - optimized for categories and performance
   const handleServiceClick = useCallback(
     (service) => {
+      // Early validation to prevent unnecessary processing
+      if (!service || !service.id) {
+        console.error("Invalid service data:", service);
+        return;
+      }
+      
       console.log("Service clicked:", service);
       
       // For categories, navigate to services page with category filter
@@ -424,17 +539,9 @@ const Home = () => {
 
       // Fallback for regular services
       const clinicId = service.clinics_id || service.clinic_id;
-      console.log("Final clinicId:", clinicId);
-
+      
       if (!clinicId || clinicId === "undefined" || clinicId === undefined) {
         console.error("No valid clinic ID found in service data:", service);
-        alert("خطأ: لم يتم العثور على معرف العيادة");
-        return;
-      }
-
-      if (!service.id) {
-        console.error("No service ID found:", service);
-        alert("خطأ: لم يتم العثور على معرف الخدمة");
         return;
       }
 
@@ -558,61 +665,293 @@ const Home = () => {
     return () => clearInterval(interval);
   }, [isPaused, CLINICS.length]);
 
-  // Auto-scroll effect for services - optimized for categories
+  // Auto-scroll effect for services - Mobile only
   useEffect(() => {
     const servicesToUse = MOST_BOOKING_SERVICES.length > 0 ? MOST_BOOKING_SERVICES : SERVICES;
-    if (servicesToUse.length === 0) return; // Don't start scrolling until services are loaded
+    const limitedServices = servicesToUse.slice(0, 3); // Only use first 3 services
+    if (limitedServices.length === 0) return; // Don't start scrolling until services are loaded
 
     let isScrolling = false; // Prevent multiple scroll operations
+    let intervalId = null;
+    let consecutiveErrors = 0;
+    const maxRetries = 3;
 
-    const interval = setInterval(() => {
-      if (isScrolling) return; // Skip if already scrolling
+    const startAutoScroll = () => {
+      // Clear existing interval
+      if (intervalId) clearInterval(intervalId);
       
-      setCurrentService((prev) => {
-        const nextIndex = (prev + 1) % servicesToUse.length;
+      // Only start auto-scroll on mobile (screen width < 768px)
+      if (window.innerWidth >= 768) return;
+
+      intervalId = setInterval(() => {
+        if (isScrolling) return; // Skip if already scrolling
         
-        if (servicesRowRef.current) {
-          // Get actual card width from DOM with error handling
-          const firstCard = servicesRowRef.current.querySelector('.home-service-card');
-          if (firstCard) {
-            const cardRect = firstCard.getBoundingClientRect();
-            const cardWidth = cardRect.width;
-            const gap = 12; // Fixed gap
-            const scrollAmount = (cardWidth + gap) * nextIndex;
-            
-            isScrolling = true;
-            
-            // Use scrollTo for smooth scrolling with error handling
-            try {
-              servicesRowRef.current.scrollTo({
-                left: scrollAmount,
-                behavior: 'smooth'
-              });
+        setCurrentService((prev) => {
+          const nextIndex = (prev + 1) % limitedServices.length;
+          
+          if (servicesRowRef.current) {
+            // Horizontal scrolling for mobile only
+            const firstCard = servicesRowRef.current.querySelector('.home-service-card');
+            if (firstCard) {
+              const cardRect = firstCard.getBoundingClientRect();
+              const cardWidth = cardRect.width;
+              const gap = 12;
+              const scrollAmount = (cardWidth + gap) * nextIndex;
               
-              // Reset scrolling flag after animation
-              setTimeout(() => {
+              isScrolling = true;
+              consecutiveErrors = 0; // Reset error count on success
+              
+              try {
+                servicesRowRef.current.scrollTo({
+                  left: scrollAmount,
+                  behavior: 'smooth'
+                });
+                
+                setTimeout(() => {
+                  isScrolling = false;
+                }, 300); // Reduced timeout for faster scrolling
+              } catch (error) {
+                console.warn('Scroll error:', error);
                 isScrolling = false;
-              }, 500);
-            } catch (error) {
-              console.warn('Scroll error:', error);
-              isScrolling = false;
+                consecutiveErrors++;
+                
+                // If too many consecutive errors, try to restart
+                if (consecutiveErrors >= 3) {
+                  console.log('Restarting services scroll');
+                  clearInterval(intervalId);
+                  setTimeout(() => {
+                    startAutoScroll();
+                  }, 1000);
+                }
+              }
+            } else {
+              // Card not found, try again later
+              setTimeout(() => {
+                if (consecutiveErrors < maxRetries) {
+                  consecutiveErrors++;
+                } else {
+                  console.warn('Could not find service card');
+                }
+              }, 100);
             }
           }
-        }
-        return nextIndex;
-      });
-    }, AUTO_SCROLL_INTERVAL);
+          return nextIndex;
+        });
+      }, AUTO_SCROLL_INTERVAL);
+    };
+
+    // Start auto-scroll with delay to ensure DOM is ready
+    const startWithDelay = () => {
+      setTimeout(() => {
+        startAutoScroll();
+      }, 500);
+    };
+
+    startWithDelay();
+
+    // Listen for window resize
+    const handleResize = () => {
+      if (window.innerWidth < 768) {
+        startAutoScroll();
+      } else {
+        if (intervalId) clearInterval(intervalId);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+
+    // Restart scroll every 30 seconds to ensure continuity
+    const restartInterval = setInterval(() => {
+      if (window.innerWidth < 768) {
+        startAutoScroll();
+      }
+    }, 30000);
 
     return () => {
-      clearInterval(interval);
+      if (intervalId) clearInterval(intervalId);
+      clearInterval(restartInterval);
+      window.removeEventListener('resize', handleResize);
     };
   }, [MOST_BOOKING_SERVICES.length, SERVICES.length]);
 
-  // Update title based on current service - optimized for categories
+  // Auto-scroll effect for services by categories - Mobile only
   useEffect(() => {
+    // Only run on mobile and if we have services by categories
+    if (window.innerWidth >= 768 || Object.keys(SERVICES_BY_CATEGORIES).length === 0) return;
+
+    let categoryScrollIntervals = {};
+    let isPaused = false;
+    let retryCount = 0;
+    const maxRetries = 3;
+
+    const startCategoryAutoScroll = () => {
+      // Clear existing intervals
+      Object.values(categoryScrollIntervals).forEach(clearInterval);
+      categoryScrollIntervals = {};
+
+      Object.entries(SERVICES_BY_CATEGORIES).forEach(([categoryName, categoryData]) => {
+        const services = categoryData.services;
+        if (services.length <= 1) return; // Don't scroll if only one service
+
+        let currentIndex = 0;
+        let isScrolling = false;
+        let consecutiveErrors = 0;
+
+        const scrollInterval = setInterval(() => {
+          if (isScrolling || isPaused) return;
+
+          currentIndex = (currentIndex + 1) % services.length;
+          
+          // Find the category services row with retry mechanism
+          const findCategoryRow = () => {
+            let categoryRow = document.querySelector(`[data-category="${categoryName}"] .home-category-services-row`);
+            
+            // If not found, try alternative selectors
+            if (!categoryRow) {
+              categoryRow = document.querySelector(`.home-category-section .home-category-services-row`);
+            }
+            
+            return categoryRow;
+          };
+
+          const categoryRow = findCategoryRow();
+          
+          if (categoryRow) {
+            const firstCard = categoryRow.querySelector('.home-service-card');
+            if (firstCard) {
+              const cardRect = firstCard.getBoundingClientRect();
+              const cardWidth = cardRect.width;
+              const gap = 16; // 1rem gap
+              const scrollAmount = (cardWidth + gap) * currentIndex;
+              
+              isScrolling = true;
+              consecutiveErrors = 0; // Reset error count on success
+              
+              try {
+                categoryRow.scrollTo({
+                  left: scrollAmount,
+                  behavior: 'smooth'
+                });
+                
+                setTimeout(() => {
+                  isScrolling = false;
+                }, 300); // Reduced timeout for faster scrolling
+              } catch (error) {
+                console.warn('Category scroll error:', error);
+                isScrolling = false;
+                consecutiveErrors++;
+                
+                // If too many consecutive errors, try to restart
+                if (consecutiveErrors >= 3) {
+                  console.log('Restarting scroll for category:', categoryName);
+                  clearInterval(scrollInterval);
+                  setTimeout(() => {
+                    startCategoryAutoScroll();
+                  }, 1000);
+                }
+              }
+            } else {
+              // Card not found, try again later
+              setTimeout(() => {
+                if (consecutiveErrors < maxRetries) {
+                  consecutiveErrors++;
+                } else {
+                  console.warn('Could not find service card for category:', categoryName);
+                }
+              }, 100);
+            }
+          } else {
+            // Row not found, try again later
+            setTimeout(() => {
+              if (consecutiveErrors < maxRetries) {
+                consecutiveErrors++;
+              } else {
+                console.warn('Could not find category row for:', categoryName);
+              }
+            }, 100);
+          }
+        }, AUTO_SCROLL_INTERVAL);
+
+        categoryScrollIntervals[categoryName] = scrollInterval;
+      });
+    };
+
+    // Start auto-scroll with delay to ensure DOM is ready
+    const startWithDelay = () => {
+      setTimeout(() => {
+        startCategoryAutoScroll();
+      }, 500);
+    };
+
+    startWithDelay();
+
+    // Add hover pause functionality (only for desktop)
+    const handleMouseEnter = () => {
+      if (window.innerWidth >= 768) {
+        isPaused = true;
+      }
+    };
+
+    const handleMouseLeave = () => {
+      if (window.innerWidth >= 768) {
+        isPaused = false;
+      }
+    };
+
+    // Add event listeners to all category sections
+    const addEventListeners = () => {
+      const categorySections = document.querySelectorAll('.home-category-section');
+      categorySections.forEach(section => {
+        section.addEventListener('mouseenter', handleMouseEnter);
+        section.addEventListener('mouseleave', handleMouseLeave);
+      });
+    };
+
+    // Add listeners with delay
+    setTimeout(addEventListeners, 1000);
+
+    // Listen for window resize
+    const handleResize = () => {
+      if (window.innerWidth < 768) {
+        isPaused = false; // Ensure scrolling continues on mobile
+        startCategoryAutoScroll();
+      } else {
+        // Clear intervals on desktop
+        Object.values(categoryScrollIntervals).forEach(clearInterval);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+
+    // Restart scroll every 30 seconds to ensure continuity
+    const restartInterval = setInterval(() => {
+      if (window.innerWidth < 768) {
+        startCategoryAutoScroll();
+      }
+    }, 30000);
+
+    return () => {
+      Object.values(categoryScrollIntervals).forEach(clearInterval);
+      clearInterval(restartInterval);
+      
+      const categorySections = document.querySelectorAll('.home-category-section');
+      categorySections.forEach(section => {
+        section.removeEventListener('mouseenter', handleMouseEnter);
+        section.removeEventListener('mouseleave', handleMouseLeave);
+      });
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [SERVICES_BY_CATEGORIES]);
+
+  // Update title based on current service - Mobile only
+  useEffect(() => {
+    // Only update title on mobile (screen width < 768px)
+    if (window.innerWidth >= 768) return;
+    
     const servicesToUse = MOST_BOOKING_SERVICES.length > 0 ? MOST_BOOKING_SERVICES : SERVICES;
-    if (servicesToUse.length > 0 && currentService < servicesToUse.length) {
-      const currentServiceData = servicesToUse[currentService];
+    const limitedServices = servicesToUse.slice(0, 3); // Only use first 3 services
+    if (limitedServices.length > 0 && currentService < limitedServices.length) {
+      const currentServiceData = limitedServices[currentService];
       if (currentServiceData && currentServiceData.category_name) {
         setSERVICES_TITLE(currentServiceData.category_name);
       } else if (currentServiceData && currentServiceData.title_ar) {
@@ -620,6 +959,110 @@ const Home = () => {
       }
     }
   }, [currentService, MOST_BOOKING_SERVICES, SERVICES]);
+
+  // Update main title when services change - optimized
+  useEffect(() => {
+    const servicesToUse = MOST_BOOKING_SERVICES.length > 0 ? MOST_BOOKING_SERVICES : SERVICES;
+    const limitedServices = servicesToUse.slice(0, 3);
+    
+    if (limitedServices.length > 0) {
+      const firstService = limitedServices[0];
+      const newTitle = firstService?.category_name || firstService?.title_ar || "خدمات غيم";
+      
+      // Only update if title actually changed to prevent unnecessary re-renders
+      if (newTitle !== SERVICES_TITLE) {
+        setSERVICES_TITLE(newTitle);
+      }
+    }
+  }, [MOST_BOOKING_SERVICES, SERVICES, SERVICES_TITLE]);
+
+  // Memoized service card component for better performance
+  const ServiceCard = useCallback(({ service, serviceIdx }) => {
+    // Memoize price display logic
+    const priceDisplay = useMemo(() => {
+      if (!service.price || service.price === "اتصل للسعر") {
+        return "اتصل للسعر";
+      }
+      
+      return (
+        <>
+          {service.price}{" "}
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 1124.14 1256.39"
+            width="12"
+            height="13"
+            aria-label="Saudi Riyal"
+            title="Saudi Riyal"
+            style={{
+              display: "inline-block",
+              verticalAlign: "middle",
+              marginLeft: "2px",
+            }}
+          >
+            <path
+              fill="currentColor"
+              d="M699.62,1113.02h0c-20.06,44.48-33.32,92.75-38.4,143.37l424.51-90.24c20.06-44.47,33.31-92.75,38.4-143.37l-424.51,90.24Z"
+            ></path>
+            <path
+              fill="currentColor"
+              d="M1085.73,895.8c20.06-44.47,33.32-92.75,38.4-143.37l-330.68,70.33v-135.2l292.27-62.11c20.06-44.47,33.32-92.75,38.4-143.37l-330.68,70.27V66.13c-50.67,28.45-95.67,66.32-132.25,110.99v403.35l-132.25,28.11V0c-50.67,28.44-95.67,66.32-132.25,110.99v525.69l-295.91,62.88c-20.06,44.47-33.33,92.75-38.42,143.37l334.33-71.05v170.26l-358.3,76.14c-20.06,44.47-33.32,92.75-38.4,143.37l375.04-79.7c30.53-6.35,56.77-24.4,73.83-49.24l68.78-101.97v-.02c7.14-10.55,11.3-23.27,11.3-36.97v-149.98l132.25-28.11v270.4l424.53-90.28Z"
+            ></path>
+          </svg>
+        </>
+      );
+    }, [service.price]);
+
+    return (
+      <div key={serviceIdx} className="home-service-card-wrapper">
+        <div
+          className="home-service-card group"
+          onClick={() => handleServiceClick(service)}
+        >
+          {/* Image Area */}
+          <div className="home-service-card-image-area">
+            <img
+              src={service.image}
+              alt={service.title_ar || service.name || "خدمة"}
+              className="home-service-card-image"
+              onError={(e) => {
+                e.target.onerror = null;
+                e.target.src = serviceImage;
+              }}
+              loading="lazy" // Lazy loading for better performance
+            />
+            {/* Hover overlay with button */}
+            <div className="home-service-card-overlay">
+              <button className="home-service-card-overlay-btn">
+                عرض التفاصيل
+              </button>
+            </div>
+          </div>
+
+          {/* Content Area */}
+          <div className="home-service-card-content">
+            {/* Service Description */}
+            <div className="home-service-card-description">
+              <p>{service.title_ar || service.name || "خدمة"}</p>
+              {/* Clinic Name */}
+              {service.clinic_name && (
+                <p className="home-service-clinic-name">
+                  {service.clinic_name}
+                </p>
+              )}
+            </div>
+
+            {/* Price/Call Button */}
+            <div className="home-service-card-price">
+              <span className="price" dir="rtl">
+                {priceDisplay}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }, [handleServiceClick]);
 
   // Auto-scroll effect for reviews - continuous right scroll - optimized
   useEffect(() => {
@@ -878,220 +1321,285 @@ const Home = () => {
         </div>
       </section>
 
-      {/* Clinics Section */}
-      <section className="home-clinics-section">
-        <div className="home-clinics-container">
-          {/* Background Container */}
-          <div className="home-clinics-bg">
-            {/* Section Title */}
-            <h2 className="home-clinics-title">العيادات</h2>
+      {/* Clinics Section - Only show if clinics_in_home_page is 1 */}
+      {HOME_PAGE_SETTINGS.clinics_in_home_page === 1 && (
+        <section className="home-clinics-section">
+          <div className="home-clinics-container">
+            {/* Background Container */}
+            <div className="home-clinics-bg">
+              {/* Section Title */}
+              <h2 className="home-clinics-title">العيادات</h2>
 
-            {/* Clinics Carousel */}
-            <div className="home-clinics-carousel">
-              {/* Navigation Buttons - Inside the container */}
-              <button
-                onClick={prevClinic}
-                className="home-clinics-nav-btn home-clinics-nav-btn-prev"
-              >
-                <svg
-                  className="w-6 h-6 text-gray-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
+              {/* Clinics Carousel */}
+              <div className="home-clinics-carousel">
+                {/* Navigation Buttons - Inside the container */}
+                <button
+                  onClick={prevClinic}
+                  className="home-clinics-nav-btn home-clinics-nav-btn-prev"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15 19l-7-7 7-7"
-                  />
-                </svg>
-              </button>
+                  <svg
+                    className="w-6 h-6 text-gray-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15 19l-7-7 7-7"
+                    />
+                  </svg>
+                </button>
 
-              <button
-                onClick={nextClinic}
-                className="home-clinics-nav-btn home-clinics-nav-btn-next"
-              >
-                <svg
-                  className="w-6 h-6 text-gray-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
+                <button
+                  onClick={nextClinic}
+                  className="home-clinics-nav-btn home-clinics-nav-btn-next"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 5l7 7-7 7"
-                  />
-                </svg>
-              </button>
+                  <svg
+                    className="w-6 h-6 text-gray-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 5l7 7-7 7"
+                    />
+                  </svg>
+                </button>
 
-              {/* Clinics Cards Row - Container with overflow hidden */}
-              <div className="home-clinics-overflow">
-                <div
-                  ref={clinicsRowRef}
-                  className="home-clinics-row"
-                  onMouseEnter={() => setIsPaused(true)}
-                  onMouseLeave={() => setIsPaused(false)}
-                >
-                  {CLINICS.map((clinic, idx) => (
-                    <div
-                      key={idx}
-                      className="home-clinic-card-wrapper"
-                      onClick={() => handleClinicClick(clinic)}
-                      style={{ cursor: "pointer" }}
-                    >
-                      <div className="home-clinic-card">
-                        {/* Card Content with overflow hidden */}
-                        <div className="home-clinic-card-content">
-                          {/* Icon Area */}
-                          <div className="home-clinic-card-icon-area">
-                            <img
-                              src={clinic.photo || download1Image}
-                              alt={clinic.name}
-                              className="home-clinic-card-icon"
-                              onError={(e) => {
-                                e.target.onerror = null;
-                                e.target.src = download1Image;
-                              }}
-                            />
-                            <div className="home-clinic-card-white-overlay"></div>
-                            {/* Dark Overlay */}
-                            <div className="home-clinic-card-dark-overlay"></div>
+                {/* Clinics Cards Row - Container with overflow hidden */}
+                <div className="home-clinics-overflow">
+                  <div
+                    ref={clinicsRowRef}
+                    className="home-clinics-row"
+                    onMouseEnter={() => setIsPaused(true)}
+                    onMouseLeave={() => setIsPaused(false)}
+                  >
+                    {CLINICS.map((clinic, idx) => (
+                      <div
+                        key={idx}
+                        className="home-clinic-card-wrapper"
+                        onClick={() => handleClinicClick(clinic)}
+                        style={{ cursor: "pointer" }}
+                      >
+                        <div className="home-clinic-card">
+                          {/* Card Content with overflow hidden */}
+                          <div className="home-clinic-card-content">
+                            {/* Icon Area */}
+                            <div className="home-clinic-card-icon-area">
+                              <img
+                                src={clinic.photo || download1Image}
+                                alt={clinic.name}
+                                className="home-clinic-card-icon"
+                                onError={(e) => {
+                                  e.target.onerror = null;
+                                  e.target.src = download1Image;
+                                }}
+                              />
+                              <div className="home-clinic-card-white-overlay"></div>
+                              {/* Dark Overlay */}
+                              <div className="home-clinic-card-dark-overlay"></div>
+                            </div>
+                          </div>
+                          {/* Text Overlay - Part of moving card */}
+                          <div className="home-clinic-card-text-wrapper">
+                            <div className="home-clinic-card-line"></div>
+                            <p className="home-clinic-card-text">{clinic.name}</p>
                           </div>
                         </div>
-                        {/* Text Overlay - Part of moving card */}
-                        <div className="home-clinic-card-text-wrapper">
-                          <div className="home-clinic-card-line"></div>
-                          <p className="home-clinic-card-text">{clinic.name}</p>
-                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
-      {/* Services Section */}
-      <section className="home-services-section">
-        <div className="home-services-outer">
-          {/* Background Container */}
-          <div className="home-services-bg">
-            {/* Services Title */}
-            <h2 className="home-services-title">{SERVICES_TITLE}</h2>
-            {/* Services Cards Container */}
-            <div ref={servicesRowRef} className="home-services-row">
-              {(MOST_BOOKING_SERVICES.length > 0 ? MOST_BOOKING_SERVICES : SERVICES).map((service, idx) => (
-                <div
-                  key={idx}
-                  className="home-service-card group"
-                  onClick={() => handleServiceClick(service)}
-                >
-                  {/* Image Area */}
-                  <div className="home-service-card-image-area">
-                    <img
-                      src={
-                        service.image || 
-                        (service.images && service.images.length > 0 
-                          ? service.images[0].image 
-                          : serviceImage)
-                      }
-                      alt={service.title_ar || service.name || "خدمة"}
-                      className="home-service-card-image"
-                      onError={(e) => {
-                        e.target.onerror = null;
-                        e.target.src = serviceImage;
-                      }}
-                    />
-                    {/* Hover overlay with button */}
-                    <div className="home-service-card-overlay">
-                      <button className="home-service-card-overlay-btn">
-                        عرض التفاصيل
-                      </button>
+      {/* Services Section - Only show if services_in_home_page is 1 */}
+      {HOME_PAGE_SETTINGS.services_in_home_page === 1 && (
+        <section className="home-services-section">
+          <div className="home-services-outer">
+            {/* Background Container */}
+            <div className="home-services-bg">
+              {/* Main Title */}
+              <h2 className="home-services-main-title">خدمات غيم الطبي</h2>
+              
+              {/* Services by Categories */}
+              {Object.keys(SERVICES_BY_CATEGORIES).length > 0 ? (
+                <div className="home-services-by-categories">
+                  {Object.entries(SERVICES_BY_CATEGORIES).map(([categoryName, categoryData]) => (
+                    <div key={categoryName} className="home-category-section" data-category={categoryName}>
+                      {/* Category Title */}
+                      <div className="home-category-header">
+                        <div className="home-category-line"></div>
+                        <h3 className="home-category-title">
+                          {categoryData.category_info.title_ar || categoryName}
+                        </h3>
+                      </div>
+                      
+                      {/* Services Row for this Category */}
+                      <div className="home-category-services-row">
+                        {categoryData.services.slice().reverse().map((service, serviceIdx) => (
+                          <ServiceCard 
+                            key={`${categoryName}-${service.id}-${serviceIdx}`}
+                            service={service} 
+                            serviceIdx={serviceIdx} 
+                          />
+                        ))}
+                      </div>
                     </div>
-                  </div>
-
-                  {/* Content Area */}
-                  <div className="home-service-card-content">
-                    {/* Service Description */}
-                    <div className="home-service-card-description">
-                      <p>{service.title_ar || service.name || "خدمة"}</p>
-                      {/* Clinic Name - show for regular services only */}
-                      {service.clinic_name && !service.category_id && (
-                        <p className="home-service-clinic-name">
-                          {service.clinic_name}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Price/Call Button */}
-                    <div className="home-service-card-price">
-                      <span className="price" dir="rtl">
-                        {!service.price || service.price === "اتصل للسعر" ? (
-                          "اتصل للسعر"
-                        ) : (
-                          <>
-                            {service.price}{" "}
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              viewBox="0 0 1124.14 1256.39"
-                              width="12"
-                              height="13"
-                              aria-label="Saudi Riyal"
-                              title="Saudi Riyal"
-                              style={{
-                                display: "inline-block",
-                                verticalAlign: "middle",
-                                marginLeft: "2px",
-                              }}
-                            >
-                              <path
-                                fill="currentColor"
-                                d="M699.62,1113.02h0c-20.06,44.48-33.32,92.75-38.4,143.37l424.51-90.24c20.06-44.47,33.31-92.75,38.4-143.37l-424.51,90.24Z"
-                              ></path>
-                              <path
-                                fill="currentColor"
-                                d="M1085.73,895.8c20.06-44.47,33.32-92.75,38.4-143.37l-330.68,70.33v-135.2l292.27-62.11c20.06-44.47,33.32-92.75,38.4-143.37l-330.68,70.27V66.13c-50.67,28.45-95.67,66.32-132.25,110.99v403.35l-132.25,28.11V0c-50.67,28.44-95.67,66.32-132.25,110.99v525.69l-295.91,62.88c-20.06,44.47-33.33,92.75-38.42,143.37l334.33-71.05v170.26l-358.3,76.14c-20.06,44.47-33.32,92.75-38.4,143.37l375.04-79.7c30.53-6.35,56.77-24.4,73.83-49.24l68.78-101.97v-.02c7.14-10.55,11.3-23.27,11.3-36.97v-149.98l132.25-28.11v270.4l424.53-90.28Z"
-                              ></path>
-                            </svg>
-                          </>
-                        )}
-                      </span>
-                    </div>
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              ) : (
+                /* Fallback to original services display */
+                <div ref={servicesRowRef} className="home-services-row">
+                  {(MOST_BOOKING_SERVICES.length > 0 ? MOST_BOOKING_SERVICES : SERVICES).slice(0, 3).map((service, idx) => (
+                    <div key={idx} className="home-service-card-wrapper">
+                      {/* Service Title Above Card - Only for first card */}
+                      {idx === 0 && (
+                        <h2 className="home-services-title">
+                          {service.category_name || service.title_ar || service.name || "خدمات غيم"}
+                        </h2>
+                      )}
+                      
+                      {/* Service Title Above Card for other cards */}
+                      {idx > 0 && (
+                        <h3 className="home-service-card-title">
+                          {service.category_name || service.title_ar || service.name || "خدمة"}
+                        </h3>
+                      )}
+                      
+                      {/* Service Card */}
+                      <div
+                        className="home-service-card group"
+                        onClick={() => handleServiceClick(service)}
+                      >
+                      {/* Image Area */}
+                      <div className="home-service-card-image-area">
+                        <img
+                          src={
+                            service.image || 
+                            (service.images && service.images.length > 0 
+                              ? service.images[0].image 
+                              : serviceImage)
+                          }
+                          alt={service.title_ar || service.name || "خدمة"}
+                          className="home-service-card-image"
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = serviceImage;
+                          }}
+                        />
+                        {/* Hover overlay with button */}
+                        <div className="home-service-card-overlay">
+                          <button className="home-service-card-overlay-btn">
+                            عرض التفاصيل
+                          </button>
+                        </div>
+                      </div>
 
-            {/* Services Indicators */}
-            <div className="home-services-indicators">
-              {(MOST_BOOKING_SERVICES.length > 0 ? MOST_BOOKING_SERVICES : SERVICES).map((_, index) => (
-                <button
-                  key={index}
-                  onClick={() => {
-                    // Get actual card width from DOM
-                    const firstCard = servicesRowRef.current?.querySelector('.home-service-card');
-                    if (firstCard) {
-                      const cardRect = firstCard.getBoundingClientRect();
-                      const cardWidth = cardRect.width;
-                      const gap = 12;
-                      const scrollAmount = (cardWidth + gap) * index;
-                      servicesRowRef.current.scrollLeft = scrollAmount;
-                    }
-                    setCurrentService(index);
-                  }}
-                  className={`home-services-indicator ${currentService === index ? "active" : ""}`}
-                  aria-label={`الذهاب إلى الخدمة ${index + 1}`}
-                />
-              ))}
+                      {/* Content Area */}
+                      <div className="home-service-card-content">
+                        {/* Service Description */}
+                        <div className="home-service-card-description">
+                          <p>{service.title_ar || service.name || "خدمة"}</p>
+                          {/* Clinic Name - show for regular services only */}
+                          {service.clinic_name && !service.category_id && (
+                            <p className="home-service-clinic-name">
+                              {service.clinic_name}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Price/Call Button */}
+                        <div className="home-service-card-price">
+                          <span className="price" dir="rtl">
+                            {!service.price || service.price === "اتصل للسعر" ? (
+                              "اتصل للسعر"
+                            ) : (
+                              <>
+                                {service.price}{" "}
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  viewBox="0 0 1124.14 1256.39"
+                                  width="12"
+                                  height="13"
+                                  aria-label="Saudi Riyal"
+                                  title="Saudi Riyal"
+                                  style={{
+                                    display: "inline-block",
+                                    verticalAlign: "middle",
+                                    marginLeft: "2px",
+                                  }}
+                                >
+                                  <path
+                                    fill="currentColor"
+                                    d="M699.62,1113.02h0c-20.06,44.48-33.32,92.75-38.4,143.37l424.51-90.24c20.06-44.47,33.31-92.75,38.4-143.37l-424.51,90.24Z"
+                                  ></path>
+                                  <path
+                                    fill="currentColor"
+                                    d="M1085.73,895.8c20.06-44.47,33.32-92.75,38.4-143.37l-330.68,70.33v-135.2l292.27-62.11c20.06-44.47,33.32-92.75,38.4-143.37l-330.68,70.27V66.13c-50.67,28.45-95.67,66.32-132.25,110.99v403.35l-132.25,28.11V0c-50.67,28.44-95.67,66.32-132.25,110.99v525.69l-295.91,62.88c-20.06,44.47-33.33,92.75-38.42,143.37l334.33-71.05v170.26l-358.3,76.14c-20.06,44.47-33.32,92.75-38.4,143.37l375.04-79.7c30.53-6.35,56.77-24.4,73.83-49.24l68.78-101.97v-.02c7.14-10.55,11.3-23.27,11.3-36.97v-149.98l132.25-28.11v270.4l424.53-90.28Z"
+                                  ></path>
+                                </svg>
+                              </>
+                            )}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Services Indicators - Only visible on mobile for fallback */}
+              {Object.keys(SERVICES_BY_CATEGORIES).length === 0 && (
+                <div className="home-services-indicators">
+                  {(MOST_BOOKING_SERVICES.length > 0 ? MOST_BOOKING_SERVICES : SERVICES).slice(0, 3).map((_, index) => (
+                    <button
+                      key={index}
+                      onClick={() => {
+                        // Check if we're on mobile (horizontal layout) or desktop (vertical layout)
+                        const isMobile = window.innerWidth < 768;
+                        
+                        if (isMobile) {
+                          // Horizontal scrolling for mobile
+                          const firstCard = servicesRowRef.current?.querySelector('.home-service-card');
+                          if (firstCard) {
+                            const cardRect = firstCard.getBoundingClientRect();
+                            const cardWidth = cardRect.width;
+                            const gap = 12;
+                            const scrollAmount = (cardWidth + gap) * index;
+                            servicesRowRef.current.scrollLeft = scrollAmount;
+                          }
+                        } else {
+                          // Vertical scrolling for desktop
+                          const cards = servicesRowRef.current?.querySelectorAll('.home-service-card');
+                          if (cards && cards[index]) {
+                            cards[index].scrollIntoView({ 
+                              behavior: 'smooth', 
+                              block: 'center' 
+                            });
+                          }
+                        }
+                        setCurrentService(index);
+                      }}
+                      className={`home-services-indicator ${currentService === index ? "active" : ""}`}
+                      aria-label={`الذهاب إلى الخدمة ${index + 1}`}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* Customer Reviews Section */}
       <section className="home-reviews-section">

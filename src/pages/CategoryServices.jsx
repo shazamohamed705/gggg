@@ -141,43 +141,7 @@ const CategoryServices = () => {
     // Optimized title selection
     const displayTitle = service.title_ar || service.title || 'خدمة غير محددة';
 
-    // Handle touch events for mobile - prevent click when showing button
-    let touchStartTime = 0;
-    let touchMoved = false;
-
-    const handleTouchStart = (e) => {
-      touchStartTime = Date.now();
-      touchMoved = false;
-      e.currentTarget.classList.add('gym-service-card-touch');
-    };
-
-    const handleTouchMove = (e) => {
-      touchMoved = true;
-    };
-
-    const handleTouchEnd = (e) => {
-      const touchDuration = Date.now() - touchStartTime;
-      
-      // If touch was too short or moved, it's a scroll, not a click
-      if (touchDuration < 200 || touchMoved) {
-        e.currentTarget.classList.add('gym-service-card-scroll');
-        setTimeout(() => {
-          e.currentTarget.classList.remove('gym-service-card-touch');
-          e.currentTarget.classList.remove('gym-service-card-scroll');
-        }, 300);
-      } else {
-        // It's a click, remove touch class immediately
-        e.currentTarget.classList.remove('gym-service-card-touch');
-      }
-    };
-
     const handleCardClick = (e) => {
-      // Check if it was a scroll (not a click)
-      if (e.currentTarget.classList.contains('gym-service-card-scroll')) {
-        e.preventDefault();
-        e.stopPropagation();
-        return;
-      }
       handleServiceDetails(service);
     };
 
@@ -186,9 +150,6 @@ const CategoryServices = () => {
         key={`${service.id}-${service.clinics_id}`}
         className="gym-service-card"
         onClick={handleCardClick}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
         style={{ cursor: "pointer" }}
       >
         <img
