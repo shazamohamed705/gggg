@@ -9,6 +9,10 @@ const Header = () => {
   const [categories, setCategories] = useState([]);
   const [showCategoriesInNavbar, setShowCategoriesInNavbar] = useState(false);
   const [isLoadingCategories, setIsLoadingCategories] = useState(true);
+  const [homePageSettings, setHomePageSettings] = useState({
+    categories_in_navbar: 0,
+    hero_title_ar: "مجمع غيم الطبي"
+  });
   const navigate = useNavigate();
 
   // Toggle menu - memoized with useCallback
@@ -39,7 +43,29 @@ const Header = () => {
     };
   }, []);
 
-  // Fetch categories from API
+  // Fetch home page settings from API
+  useEffect(() => {
+    const fetchHomePageSettings = async () => {
+      try {
+        const response = await fetch("https://ghaimcenter.com/laravel/api/home-page-settings");
+        const result = await response.json();
+        
+        if (result.status === true && result.data) {
+          setHomePageSettings(prevSettings => ({
+            ...prevSettings,
+            ...result.data
+          }));
+          console.log("✅ Home page settings loaded in header:", result.data);
+        }
+      } catch (error) {
+        console.error("Error fetching home page settings:", error);
+      }
+    };
+    
+    fetchHomePageSettings();
+  }, []);
+
+   // Fetch categories for navbar from API (clinics/categories)
   useEffect(() => {
     const fetchCategories = async () => {
       try {
@@ -50,7 +76,7 @@ const Header = () => {
         const timeoutId = setTimeout(() => controller.abort(), 2000); // 2 ثانية timeout
         
         const response = await fetch(
-          "https://ghaimcenter.com/laravel/api/clinics/services-in-categories",
+          "https://ghaimcenter.com/laravel/api/clinics/categories",
           {
             signal: controller.signal,
             headers: {
@@ -68,54 +94,30 @@ const Header = () => {
         
         const result = await response.json();
         
-        if (result.status === "success" && result.data) {
-          // Handle new data structure - data is now in result.data.data
-          const categoriesData = result.data.data || result.data;
-          const homePageSettings = result.data.home_page_setting;
-          
-          console.log("🔍 Full result:", result);
-          console.log("🔍 Home page settings:", homePageSettings);
-          console.log("🔍 Categories data:", categoriesData);
-          
-          // Check if categories should be shown in navbar
-          const shouldShowCategories = homePageSettings && homePageSettings.categories_in_navbar === 1;
-          
-          console.log("🔍 shouldShowCategories:", shouldShowCategories);
-          console.log("🔍 homePageSettings.categories_in_navbar:", homePageSettings?.categories_in_navbar);
-          
-          if (shouldShowCategories) {
-            console.log("✅ Categories enabled in navbar setting");
-          } else {
-            console.log("❌ Categories not enabled in navbar setting");
-          }
-          
-          // Get first 3 categories that have services
-          const categoriesWithServices = Object.entries(categoriesData)
-            .filter(([categoryName, categoryData]) => 
-              categoryData.category_info && 
-              categoryData.services && 
-              categoryData.services.length > 0
-            )
-            .slice(0, 3) // Take only first 3 categories
-            .map(([categoryName, categoryData]) => ({
-              id: categoryData.category_info.id,
-              name: categoryData.category_info.title_ar || categoryName,
-              title_ar: categoryData.category_info.title_ar,
-              title_en: categoryData.category_info.title_en,
-              icon: categoryData.category_info.icon
+        if (result.status === "success" && Array.isArray(result.data)) {
+          const categoriesArray = result.data;
+
+          // Filter categories to show in navbar only when show_in_navbar === 1 and not deleted
+          const navbarCategories = categoriesArray
+            .filter((cat) => Number(cat.show_in_navbar) === 1 && Number(cat.is_deleted) === 0)
+            .map((cat) => ({
+              id: cat.id,
+              name: cat.title_ar || cat.title,
+              title_ar: cat.title_ar,
+              title_en: cat.title_en,
+              icon: cat.icon ? `https://ghaimcenter.com/laravel/storage/app/public/${cat.icon}` : undefined
             }));
-          
-          if (categoriesWithServices.length > 0) {
-            console.log("✅ Categories loaded for navbar:", categoriesWithServices);
-            console.log("🔍 Setting showCategoriesInNavbar to:", shouldShowCategories);
-            // Use the setting from API
-            setShowCategoriesInNavbar(shouldShowCategories);
-            setCategories(categoriesWithServices);
-            console.log("🔍 Categories state updated - shouldShowCategories:", shouldShowCategories, "categories count:", categoriesWithServices.length);
+
+          if (navbarCategories.length > 0) {
+            setShowCategoriesInNavbar(true);
+            setCategories(navbarCategories);
           } else {
-            console.log("❌ No categories with services found");
             setShowCategoriesInNavbar(false);
+            setCategories([]);
           }
+        } else {
+          setShowCategoriesInNavbar(false);
+          setCategories([]);
         }
       } catch (error) {
         console.error("Error fetching categories:", error);
@@ -127,7 +129,7 @@ const Header = () => {
     };
 
     fetchCategories();
-  }, []);
+  }, [homePageSettings]);
 
   // Handle category click
   const handleCategoryClick = useCallback((categoryId) => {

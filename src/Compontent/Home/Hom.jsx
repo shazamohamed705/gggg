@@ -48,6 +48,16 @@ const Home = () => {
     services_in_home_page: 1
   });
 
+  // Hero section data from API
+  const [HERO_DATA, setHERO_DATA] = useState({
+    hero_title_ar: "مجمع غيم الطبي",
+    hero_title_en: "ghaimcenter",
+    hero_subtitle_ar: "مستشفى الشفاء تقدم أفضل رعاية طبية متكاملة ...",
+    hero_subtitle_en: "مستشفى الشفاء تقدم أفضل رعاية طبية متكاملة ...",
+    hero_button_text_ar: "احجز الآن",
+    hero_button_text_en: "Book Now"
+  });
+
   // Dynamic reviews data from API
   const [REVIEWS, setREVIEWS] = useState([]);
 
@@ -62,6 +72,49 @@ const Home = () => {
   const clinicsRowRef = useRef(null);
   const servicesRowRef = useRef(null);
   const reviewsRowRef = useRef(null);
+
+  // Fetch home page settings from API - optimized with memoization
+  useEffect(() => {
+    const fetchHomePageSettings = async () => {
+      try {
+        const response = await fetch("https://ghaimcenter.com/laravel/api/home-page-settings");
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        
+        if (result.status === true && result.data) {
+          const { data } = result;
+          
+          // Update hero data with fallback values
+          setHERO_DATA(prevData => ({
+            hero_title_ar: data.hero_title_ar || prevData.hero_title_ar,
+            hero_title_en: data.hero_title_en || prevData.hero_title_en,
+            hero_subtitle_ar: data.hero_subtitle_ar || prevData.hero_subtitle_ar,
+            hero_subtitle_en: data.hero_subtitle_en || prevData.hero_subtitle_en,
+            hero_button_text_ar: data.hero_button_text_ar || prevData.hero_button_text_ar,
+            hero_button_text_en: data.hero_button_text_en || prevData.hero_button_text_en
+          }));
+          
+          // Update home page settings with fallback values
+          setHOME_PAGE_SETTINGS(prevSettings => ({
+            categories_in_navbar: data.categories_in_navbar ?? prevSettings.categories_in_navbar,
+            clinics_in_home_page: data.clinics_in_home_page ?? prevSettings.clinics_in_home_page,
+            services_in_home_page: data.services_in_home_page ?? prevSettings.services_in_home_page
+          }));
+          
+          console.log("✅ Home page settings loaded:", data);
+        }
+      } catch (error) {
+        console.error("Error fetching home page settings:", error);
+        // Keep default values - no need to update state
+      }
+    };
+    
+    fetchHomePageSettings();
+  }, []); // Empty dependency array for one-time fetch
 
   // Fetch home page data from API
   useEffect(() => {
@@ -100,7 +153,7 @@ const Home = () => {
     const fetchClinics = async () => {
       try {
         const response = await fetch(
-          "https://ghaimcenter.com/laravel/api/clinics"
+          "https://ghaimcenter.com/laravel/api/clinics?limit=4"
         );
         const result = await response.json();
         if (result.status === "success") {
@@ -149,8 +202,13 @@ const Home = () => {
         );
         const result = await response.json();
         if (result.status === "success") {
-          // Take all services from the API
-          const servicesData = result.data.map((service) => ({
+          // Use only services that should appear on home page when the flag exists
+          const apiServices = Array.isArray(result.data) ? result.data : [];
+          const filtered = apiServices.filter((service) =>
+            typeof service.show_in_home_page === "number" ? service.show_in_home_page === 1 : true
+          );
+
+          const servicesData = filtered.map((service) => ({
             id: service.id,
             clinic_id: service.clinics_id || service.clinic_id, // Use clinics_id if available
             clinics_id: service.clinics_id || service.clinic_id, // Ensure both fields are available
@@ -348,15 +406,23 @@ const Home = () => {
           const processedData = {};
           
           Object.entries(categoriesData).forEach(([categoryName, categoryData]) => {
-            // Skip empty categories or categories with no services
-            if (!categoryData.category_info || !categoryData.services || categoryData.services.length === 0) {
+            // Skip if missing category info or services array
+            if (!categoryData.category_info || !categoryData.services) {
               return;
             }
-            
+
             const categoryInfo = categoryData.category_info;
-            const services = categoryData.services;
+
+            // Check category-level visibility flag: show only when it's 1
+            const showCategoryInHome = Number(categoryInfo.show_in_home_page) === 1;
+            if (!showCategoryInHome) {
+              return;
+            }
+
+            // Only include services marked to show on home page
+            const services = (categoryData.services || []).filter((service) => Number(service.show_in_home_page) === 1);
             
-            // Process services for this category
+            // Process services for this category (after filtering)
             const processedServices = services.map((service) => ({
               id: service.id,
               title_ar: service.title_ar || service.title,
@@ -519,7 +585,7 @@ const Home = () => {
     [navigate]
   );
 
-  // Navigate to service details page - optimized for categories and performance
+  // Navigate to service details page directly with clinic and service IDs
   const handleServiceClick = useCallback(
     (service) => {
       // Early validation to prevent unnecessary processing
@@ -527,19 +593,10 @@ const Home = () => {
         console.error("Invalid service data:", service);
         return;
       }
-      
-      console.log("Service clicked:", service);
-      
-      // For categories, navigate to services page with category filter
-      if (service.category_id) {
-        console.log(`Navigating to services with category: ${service.category_id}`);
-        navigate(`/services?category_id=${service.category_id}`);
-        return;
-      }
 
-      // Fallback for regular services
-      const clinicId = service.clinics_id || service.clinic_id;
-      
+      // Prefer explicit clinic id fields, fallback to nested clinic object
+      const clinicId = service.clinics_id || service.clinic_id || service.clinic?.id;
+
       if (!clinicId || clinicId === "undefined" || clinicId === undefined) {
         console.error("No valid clinic ID found in service data:", service);
         return;
@@ -571,20 +628,31 @@ const Home = () => {
     [navigate]
   );
 
+  // Memoized computed values for better performance
+  const bannersLength = useMemo(() => HOME_DATA.banners?.length || 2, [HOME_DATA.banners?.length]);
+  
+  // Memoized services data for better performance
+  const servicesToUse = useMemo(() => 
+    MOST_BOOKING_SERVICES.length > 0 ? MOST_BOOKING_SERVICES : SERVICES, 
+    [MOST_BOOKING_SERVICES, SERVICES]
+  );
+  
+  const limitedServices = useMemo(() => 
+    servicesToUse.slice(0, 3), 
+    [servicesToUse]
+  );
+  
   // Memoized callbacks for better performance
   const nextImage = useCallback(() => {
-    const bannersLength = HOME_DATA.banners?.length || 2; // fallback to 2 for static images
     setCurrentImage((prev) => (prev + 1) % bannersLength);
-  }, [HOME_DATA.banners?.length]);
+  }, [bannersLength]);
 
   const prevImage = useCallback(() => {
-    const bannersLength = HOME_DATA.banners?.length || 2; // fallback to 2 for static images
     setCurrentImage((prev) => (prev - 1 + bannersLength) % bannersLength);
-  }, [HOME_DATA.banners?.length]);
+  }, [bannersLength]);
 
   // Auto-scroll effect for banner images - optimized
   useEffect(() => {
-    const bannersLength = HOME_DATA.banners?.length || 2; // fallback to 2 for static images
     if (bannersLength <= 1) return; // Don't auto-scroll if only one image
 
     let isTransitioning = false; // Prevent multiple transitions
@@ -602,7 +670,7 @@ const Home = () => {
     }, AUTO_SCROLL_INTERVAL);
 
     return () => clearInterval(interval);
-  }, [HOME_DATA.banners?.length]);
+  }, [bannersLength]);
 
   const getClinicScrollStep = useCallback(() => {
     const el = clinicsRowRef.current;
@@ -667,8 +735,6 @@ const Home = () => {
 
   // Auto-scroll effect for services - Mobile only
   useEffect(() => {
-    const servicesToUse = MOST_BOOKING_SERVICES.length > 0 ? MOST_BOOKING_SERVICES : SERVICES;
-    const limitedServices = servicesToUse.slice(0, 3); // Only use first 3 services
     if (limitedServices.length === 0) return; // Don't start scrolling until services are loaded
 
     let isScrolling = false; // Prevent multiple scroll operations
@@ -774,10 +840,10 @@ const Home = () => {
     };
   }, [MOST_BOOKING_SERVICES.length, SERVICES.length]);
 
-  // Auto-scroll effect for services by categories - Mobile only
+  // Auto-scroll effect for services by categories - all screens
   useEffect(() => {
-    // Only run on mobile and if we have services by categories
-    if (window.innerWidth >= 768 || Object.keys(SERVICES_BY_CATEGORIES).length === 0) return;
+    // Only run if we have services by categories
+    if (Object.keys(SERVICES_BY_CATEGORIES).length === 0) return;
 
     let categoryScrollIntervals = {};
     let isPaused = false;
@@ -912,22 +978,16 @@ const Home = () => {
 
     // Listen for window resize
     const handleResize = () => {
-      if (window.innerWidth < 768) {
-        isPaused = false; // Ensure scrolling continues on mobile
-        startCategoryAutoScroll();
-      } else {
-        // Clear intervals on desktop
-        Object.values(categoryScrollIntervals).forEach(clearInterval);
-      }
+      // Restart auto scroll on any resize to keep in sync with layout
+      isPaused = false;
+      startCategoryAutoScroll();
     };
 
     window.addEventListener('resize', handleResize);
 
     // Restart scroll every 30 seconds to ensure continuity
     const restartInterval = setInterval(() => {
-      if (window.innerWidth < 768) {
-        startCategoryAutoScroll();
-      }
+      startCategoryAutoScroll();
     }, 30000);
 
     return () => {
@@ -1203,16 +1263,14 @@ const Home = () => {
 
           {/* Carousel Indicators */}
           <div className="home-banner-indicators">
-            {(HOME_DATA.banners?.length > 0 ? HOME_DATA.banners : [1, 2]).map(
-              (_, index) => (
-                <button
-                  key={index}
-                  onClick={() => setCurrentImage(index)}
-                  className={`home-banner-indicator ${currentImage === index ? "active" : ""}`}
-                  aria-label={`الذهاب إلى الصورة ${index + 1}`}
-                />
-              )
-            )}
+            {Array.from({ length: bannersLength }, (_, index) => (
+              <button
+                key={index}
+                onClick={() => setCurrentImage(index)}
+                className={`home-banner-indicator ${currentImage === index ? "active" : ""}`}
+                aria-label={`الذهاب إلى الصورة ${index + 1}`}
+              />
+            ))}
           </div>
         </div>
 
@@ -1234,16 +1292,16 @@ const Home = () => {
                 onTouchStart={handleBookNowTouch}
                 type="button"
               >
-                احجز الآن
+                {HERO_DATA.hero_button_text_ar}
               </button>
             </div>
 
             {/* Services Text - Bottom */}
             <div className="home-hero-booking-text-container">
-              <h2 className="home-hero-booking-title">خدمات غيم</h2>
+              <h2 className="home-hero-booking-title">{HERO_DATA.hero_title_ar}</h2>
               <p className="home-hero-booking-description">
                 <span className="text-gray">احجز موعدك لدى </span>
-                <span className="text-blue">خدمات غيم </span>
+                <span className="text-blue">{HERO_DATA.hero_title_ar} </span>
                 <span className="text-gray">بخطوات بسيطة....</span>
               </p>
             </div>
@@ -1255,17 +1313,11 @@ const Home = () => {
       <section className="home-complex-section" dir="rtl">
         <div className="home-complex-container">
           {/* Title */}
-          <h1 className="home-complex-title">مجمع غيم الطبي</h1>
+          <h1 className="home-complex-title">{HERO_DATA.hero_title_ar}</h1>
 
           {/* Description */}
           <p className="home-complex-description">
-            مستشفى الشفاء تقدم أفضل رعاية طبية متكاملة ...مستشفى الشفاء تقدم
-            أفضل رعاية طبية متكاملة ...مستشفى الشفاء تقدم أفضل رعاية طبية
-            متكاملة ...مستشفى الشفاء تقدم أفضل رعاية طبية متكاملة ...مستشفى
-            الشفاء تقدم أفضل رعاية طبية متكاملة ...مستشفى الشفاء تقدم أفضل رعاية
-            طبية متكاملة ...مستشفى الشفاء تقدم أفضل رعاية طبية متكاملة ...مستشفى
-            الشفاء تقدم أفضل رعاية طبية متكاملة ...مستشفى الشفاء تقدم أفضل رعاية
-            طبية متكاملة ...
+            {HERO_DATA.hero_subtitle_ar}
           </p>
 
           {/* Social Media Icons - Only show if there are social media links */}

@@ -664,6 +664,20 @@
   }
 }
 
+/* Laptop/Desktop: عرض 4 كروت بالضبط بنفس المقاس */
+@media (min-width: 1024px) {
+  .home-clinics-row {
+    overflow-x: hidden; /* منع ظهور جزء من الكرت التالي */
+    padding: 0; /* إزالة الحشوات لضبط الحسابات بدقة */
+    gap: 1rem; /* 3 فراغات بين 4 كروت */
+    justify-content: flex-start; /* توزيع طبيعي مع gap فقط */
+  }
+  .home-clinic-card-wrapper {
+    width: calc((100% - 3rem) / 4); /* 4 كروت مع 3 فواصل gap=1rem */
+    height: 20rem; /* نفس الارتفاع الحالي */
+  }
+}
+
 .home-clinic-card {
   width: 100%;
   height: 100%;
@@ -1357,8 +1371,8 @@
   scroll-behavior: smooth;
   scroll-snap-type: x mandatory;
   direction: rtl; /* إضافة دعم RTL */
-  scrollbar-width: thin; /* تحسين مظهر شريط التمرير */
-  scrollbar-color: #0874BE #f1f1f1; /* ألوان شريط التمرير */
+  scrollbar-width: none; /* إخفاء شريط التمرير في فايرفوكس */
+  -ms-overflow-style: none; /* إخفاء شريط التمرير في IE/Edge القديم */
   justify-content: flex-start; /* بدء الكروت من اليمين بسبب RTL */
   align-items: flex-start; /* محاذاة الكروت من الأعلى */
 }
@@ -1377,31 +1391,9 @@
   }
 }
 
-/* تحسين شريط التمرير للكروت */
+/* إخفاء شريط التمرير في كروم/سفاري */
 .home-category-services-row::-webkit-scrollbar {
-  height: 6px;
-}
-
-.home-category-services-row::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 3px;
-}
-
-.home-category-services-row::-webkit-scrollbar-thumb {
-  background: #0874BE;
-  border-radius: 3px;
-  transition: background 0.3s ease;
-}
-
-.home-category-services-row::-webkit-scrollbar-thumb:hover {
-  background: #0171BD;
-}
-
-/* إخفاء شريط التمرير على الجوال */
-@media (max-width: 767px) {
-  .home-category-services-row::-webkit-scrollbar {
-    display: none;
-  }
+  display: none;
 }
 
 /* Service Card Wrapper for Categories */
@@ -1906,4 +1898,10 @@
 }
 
 
+
+
+/* إخفاء أزرار أسهم تحريك كروت العيادات على جميع المقاسات */
+.home-clinics-nav-btn {
+  display: none !important;
+}
 
